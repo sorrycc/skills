@@ -1,9 +1,6 @@
 ---
 name: harness-self-improve
-description: |
-  Audit recent Claude Code work to find repeated manual workflows worth packaging into skills, subagents, slash commands, hooks, or cron jobs.
-  Use when user says "self improve", "harness self improve", "audit my workflows", "find repeated work", "what should I package",
-  or asks Claude to look back at recent sessions and suggest new skills/commands/hooks to create.
+description: Audit recent sessions to find repeated workflows worth packaging. Use on "self improve" or "audit my workflows".
 allowed-tools:
   - Read
   - Grep
