@@ -7,11 +7,15 @@ description: Wrap up a finished dev task — commit and push.
 
 Inspect git, write a commit message, stage, commit, push. Common path runs entirely in the parent agent via two co-located bash helpers. Subagent fallback only kicks in for huge diffs so they don't poison parent context.
 
+## Scripts
+
+`SKILL_DIR` = this SKILL.md file's directory (announced as "Base directory for this skill" when the skill loads). The two helpers live alongside this file at `${SKILL_DIR}/inspect.sh` and `${SKILL_DIR}/commit.sh`. **Always invoke them through `${SKILL_DIR}`** — never a hardcoded `.claude/skills/go/...` path, which only resolves when the skill happens to be installed in the current project and breaks on global/plugin installs.
+
 ## Flow
 
-1. **Inspect.** Run `bash .claude/skills/go/inspect.sh`. Parse the JSON blob on stdout. Branch on exit code:
+1. **Inspect.** Run `bash ${SKILL_DIR}/inspect.sh`. Parse the JSON blob on stdout. Branch on exit code:
    - `1` → print "nothing to do", stop.
-   - `2` → print `Refusing to commit. Secrets found:` followed by `secretsFound[]` (each entry is `path:pattern-id`). If the match is clearly a documentation example or test fixture, defang the offending line (replace with an obvious placeholder like `<example-key>`) and re-run `bash .claude/skills/go/inspect.sh` — the scan reads `git diff HEAD`, so worktree edits take effect without re-staging. Only stop unconditionally when a match looks like a real secret.
+   - `2` → print `Refusing to commit. Secrets found:` followed by `secretsFound[]` (each entry is `path:pattern-id`). If the match is clearly a documentation example or test fixture, defang the offending line (replace with an obvious placeholder like `<example-key>`) and re-run `bash ${SKILL_DIR}/inspect.sh` — the scan reads `git diff HEAD`, so worktree edits take effect without re-staging. Only stop unconditionally when a match looks like a real secret.
    - `0` → continue.
 
 2. **Push-only shortcut.** If `files.length == 0` AND `ahead > 0`, the working tree is clean but unpushed commits exist. Run `git push` (use `-u origin HEAD` if no upstream). Print `Pushed <ahead> commit(s) on <branch>`. Stop.
@@ -26,7 +30,7 @@ Inspect git, write a commit message, stage, commit, push. Common path runs entir
 5. **Common path: write message + commit.** Synthesize a one-line conventional-commit message from the pruned `files[]` (and your knowledge of recent edits). Format `type: short summary` where `type` is one of `feat fix docs chore refactor test perf style build ci`. Then run:
 
    ```bash
-   bash .claude/skills/go/commit.sh "<message>" <path1> <path2> ...
+   bash ${SKILL_DIR}/commit.sh "<message>" <path1> <path2> ...
    ```
 
    Parse the JSON from stdout:
@@ -73,4 +77,5 @@ When `(pruned files.length) > 30` OR `diffStatBytes > 50000`, the diff is too bi
 - Staging is **explicit-path only** (`git add -- "$@"`). Never `-A` / `.`.
 - Push is **never** `--force` / `+refs`.
 - Commit is **never** `--no-verify` or `--amend`.
+- **Branch scope** — go commits and pushes on **whatever branch is currently checked out**; it never runs `git checkout -b`. If a `/go` commit lands on a feature branch, that branch came from an earlier step (e.g. the harness "branch first on the default branch" rule, or `/one-shot`), **not** from `/go`. When the current branch has no upstream, `commit.sh` pushes with `git push -u origin HEAD` — that publishes the current branch as a new remote branch, but does not create a local branch.
 - `commit.sh` runs the project's format command before staging when both `bun` and a `scripts.format` entry are present; a missing formatter is skipped with a stderr note. Format failures hard-abort the commit (exit 6). Whole-repo scope; unrelated drift may surface on the next `/go`.
