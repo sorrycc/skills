@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "cc-skills",
+  "owner": {
+    "name": "sorrycc",
+    "email": "sorrycc@gmail.com",
+    "url": "https://github.com/sorrycc"
+  },
+  "description": "A collection of my custom agent skills.",
+  "plugins": [
+    {
+      "name": "cc-skills",
+      "description": "A collection of my custom agent skills.",
+      "source": "./",
+      "license": "MIT",
+      "repository": "https://github.com/sorrycc/skills",
+      "author": {
+        "name": "sorrycc",
+        "url": "https://github.com/sorrycc"
+      }
+    }
+  ]
+}
