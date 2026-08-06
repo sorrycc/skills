@@ -1,0 +1,4130 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>西游记 &mdash; Journey to the West</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: #05070f;
+  }
+  /* The canvas must be positioned, not left in normal flow: a static in-flow
+     canvas is not composited into a headless screenshot at all — the capture
+     comes back as flat page background, which reads exactly like a scene that
+     renders nothing. Explicit z-index then keeps the overlays above it, since
+     the canvas is appended after them in DOM order. */
+  canvas { display: block; position: fixed; left: 0; top: 0; z-index: 0; }
+
+  /* ---- chapter title card, top-left ---- */
+  #chapter {
+    position: fixed; left: 34px; top: 30px; z-index: 2;
+    color: #f4e2b8; pointer-events: none;
+    font-family: "Songti SC", "STSong", "Noto Serif SC", Georgia, serif;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+    transition: opacity 0.9s ease;
+  }
+  #chapter .num {
+    font-size: 13px; letter-spacing: 5px; opacity: 0.72; color: #d9a441;
+  }
+  #chapter .cn {
+    font-size: 31px; letter-spacing: 7px; margin-top: 5px; font-weight: 600;
+  }
+  #chapter .en {
+    font-size: 12px; letter-spacing: 2.4px; opacity: 0.6; margin-top: 6px;
+    font-family: Georgia, "Times New Roman", serif; font-style: italic;
+  }
+
+  /* ---- caption track, bottom-centre ---- */
+  #caption {
+    position: fixed; left: 0; right: 0; bottom: 46px; z-index: 2;
+    text-align: center; pointer-events: none;
+    transition: opacity 0.6s ease;
+  }
+  #caption .cn {
+    color: #f6ecd6; font-size: 21px; letter-spacing: 3.5px;
+    font-family: "Songti SC", "STSong", "Noto Serif SC", Georgia, serif;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.9);
+  }
+  #caption .en {
+    color: #cbb98f; font-size: 12.5px; letter-spacing: 1.6px; margin-top: 8px;
+    font-family: Georgia, "Times New Roman", serif; font-style: italic;
+    opacity: 0.78; text-shadow: 0 1px 8px rgba(0,0,0,0.9);
+  }
+
+  /* ---- seal, bottom-right ---- */
+  #seal {
+    position: fixed; right: 30px; bottom: 26px; pointer-events: none; z-index: 2;
+    width: 46px; height: 46px; border: 2px solid #b23a2e; border-radius: 3px;
+    color: #d8483a; opacity: 0.72;
+    font-family: "Songti SC", "STSong", serif; font-size: 17px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    letter-spacing: 0; line-height: 1.05; text-align: center;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.7);
+  }
+
+  /* ---- crossfade veil between chapters ---- */
+  #fade {
+    position: fixed; inset: 0; background: #05070f; z-index: 3;
+    pointer-events: none; opacity: 0;
+  }
+
+
+  /* ---- transport bar ---- */
+  #bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 22px 15px;
+    background: linear-gradient(to top, rgba(5,7,15,0.82), rgba(5,7,15,0));
+    font-family: "Songti SC", Georgia, serif; color: #e6dcc4;
+    opacity: 0; transition: opacity 0.45s ease;
+  }
+  #bar.show { opacity: 1; }
+  #bar button {
+    background: none; border: 1px solid rgba(230,220,196,0.35); border-radius: 3px;
+    color: #e6dcc4; font-family: inherit; font-size: 13px; letter-spacing: 2px;
+    padding: 5px 11px; cursor: pointer; min-width: 42px;
+  }
+  #bar button:hover { border-color: #d9a441; color: #f4e2b8; }
+  #track {
+    position: relative; flex: 1; height: 22px; cursor: pointer;
+  }
+  #track .rail {
+    position: absolute; left: 0; right: 0; top: 9px; height: 4px;
+    background: rgba(230,220,196,0.18); border-radius: 2px;
+  }
+  #track .fill {
+    position: absolute; left: 0; top: 9px; height: 4px; width: 0;
+    background: #d9a441; border-radius: 2px;
+  }
+  #track .tick {
+    position: absolute; top: 5px; width: 1px; height: 12px;
+    background: rgba(230,220,196,0.45);
+  }
+  #track .knob {
+    position: absolute; top: 5px; width: 12px; height: 12px; margin-left: -6px;
+    border-radius: 50%; background: #f4e2b8; box-shadow: 0 0 6px rgba(0,0,0,0.6);
+  }
+  #track .hover {
+    position: absolute; bottom: 24px; transform: translateX(-50%);
+    background: rgba(5,7,15,0.9); border: 1px solid rgba(230,220,196,0.25);
+    padding: 3px 8px; font-size: 12px; letter-spacing: 1px; white-space: nowrap;
+    border-radius: 3px; display: none; pointer-events: none;
+  }
+  #clock { font-size: 12.5px; letter-spacing: 1.5px; opacity: 0.85;
+           font-variant-numeric: tabular-nums; min-width: 92px; text-align: right; }
+  #vol { width: 78px; accent-color: #d9a441; }
+
+  /* ---- start gate: browsers refuse audio without a gesture ---- */
+  #gate {
+    position: fixed; inset: 0; z-index: 9; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 26px;
+    background: radial-gradient(ellipse at center, #0d1224 0%, #05070f 75%);
+    color: #f4e2b8; font-family: "Songti SC", "STSong", Georgia, serif;
+    transition: opacity 0.8s ease;
+  }
+  #gate .big { font-size: 62px; letter-spacing: 22px; text-indent: 22px; font-weight: 600; }
+  #gate .sub { font-size: 13px; letter-spacing: 4px; opacity: 0.6;
+               font-family: Georgia, serif; font-style: italic; }
+  #gate .row { display: flex; gap: 16px; align-items: center; margin-top: 8px; }
+  #gate button {
+    background: none; border: 1px solid rgba(244,226,184,0.5); border-radius: 3px;
+    color: #f4e2b8; font-family: inherit; font-size: 15px; letter-spacing: 6px;
+    text-indent: 6px; padding: 10px 26px; cursor: pointer;
+  }
+  #gate button:hover { border-color: #d9a441; background: rgba(217,164,65,0.12); }
+  #gate .quiet { font-size: 12px; letter-spacing: 2px; opacity: 0.5;
+                 cursor: pointer; text-decoration: underline; }
+  #gate .quiet:hover { opacity: 0.85; }
+
+  /* ---- loading notice (removed on first frame) ---- */
+  #boot {
+    position: fixed; inset: 0; z-index: 4; display: flex; align-items: center;
+    justify-content: center; color: #6a6250; background: #05070f;
+    font-family: "Songti SC", Georgia, serif; font-size: 15px; letter-spacing: 4px;
+  }
+</style>
+</head>
+<body>
+<div id="boot">西行路上&hellip;</div>
+<div id="chapter"><div class="num"></div><div class="cn"></div><div class="en"></div></div>
+<div id="caption"><div class="cn"></div><div class="en"></div></div>
+<div id="seal">西游</div>
+<div id="fade"></div>
+<div id="gate">
+  <div class="big">西游记</div>
+  <div class="sub">Journey to the West &mdash; a procedural telling in five chapters</div>
+  <div class="row"><button id="gate-go">开 始</button></div>
+  <div class="quiet" id="gate-mute">静音观看 · watch without sound</div>
+</div>
+<div id="bar">
+  <button id="btn-play">暂停</button>
+  <div id="track"><div class="rail"></div><div class="fill"></div><div class="knob"></div><div class="hover"></div></div>
+  <div id="clock">0:00 / 0:00</div>
+  <button id="btn-mute">静音</button>
+  <input id="vol" type="range" min="0" max="100" value="80">
+</div>
+
+<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script>
+'use strict';
+
+
+// ============================================================================
+//  西游记 — a procedural three.js telling of Journey to the West
+//  Five chapters, one file, everything built from code.
+//
+//  URL params (used by shot.sh, handy by hand):
+//    ?chapter=N   jump straight to chapter N (1-5)
+//    &t=SECONDS   local story time inside that chapter
+//    &freeze=1    render exactly one frame and stop — deterministic screenshots
+//    &seed=NNN    reseed the procedural placement
+// ============================================================================
+
+const PARAMS = new URLSearchParams(location.search);
+const P_CHAPTER = PARAMS.has('chapter') ? Math.max(1, parseInt(PARAMS.get('chapter'), 10)) : null;
+const P_TIME    = PARAMS.has('t') ? parseFloat(PARAMS.get('t')) : 0;
+const P_FREEZE  = PARAMS.get('freeze') === '1';
+const P_SEED    = PARAMS.has('seed') ? parseInt(PARAMS.get('seed'), 10) : 20260803;
+
+// ============================================================================
+//  Helpers — seeded RNG, so every load places the same rocks in the same spots.
+//  Without this, two audit screenshots are of two different scenes and you
+//  cannot tell a fix from a reroll.
+// ============================================================================
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let _rng = mulberry32(P_SEED);
+function rnd()          { return _rng(); }
+function rand(a, b)     { return a + _rng() * (b - a); }
+function randi(a, b)    { return Math.floor(rand(a, b + 1)); }
+function pick(arr)      { return arr[Math.floor(_rng() * arr.length)]; }
+function chance(p)      { return _rng() < p; }
+function reseed(s)      { _rng = mulberry32(s); }
+
+const clamp  = THREE.MathUtils.clamp;
+const lerp   = THREE.MathUtils.lerp;
+const smooth = THREE.MathUtils.smoothstep;
+const TAU    = Math.PI * 2;
+
+// Ease helpers for camera moves and beats
+function ease(t)      { return t * t * (3 - 2 * t); }               // smoothstep
+function easeOut(t)   { return 1 - Math.pow(1 - t, 3); }
+function easeIn(t)    { return t * t * t; }
+function pulse(t, a, b) { return clamp((t - a) / Math.max(1e-6, b - a), 0, 1); }
+
+const STD = (o) => new THREE.MeshStandardMaterial(Object.assign({ roughness: 0.85, metalness: 0.0 }, o));
+const PHONG = (o) => new THREE.MeshPhongMaterial(Object.assign({ shininess: 40 }, o));
+const BASIC = (o) => new THREE.MeshBasicMaterial(Object.assign({}, o));
+
+// A colour vocabulary borrowed from temple paint and opera costume.
+const C = {
+  cinnabar:  0xb8352a,   // 朱红  temple pillars, Wukong's skirt
+  vermilion: 0xd94f2b,
+  imperialY: 0xe8b83a,   // 明黄  the celestial palace
+  gold:      0xf2c75c,
+  darkGold:  0xa8781f,
+  jade:      0x3f8f76,   // 青绿
+  deepJade:  0x1f5a4c,
+  ink:       0x1a1d26,
+  stone:     0x6b6b6e,
+  darkStone: 0x3b3b42,
+  fur:       0x9a6b3e,   // Wukong
+  furLight:  0xc09257,
+  monkRobe:  0xc23b28,
+  monkGold:  0xd9a441,
+  pigSkin:   0xd9a0a0,
+  shaRobe:   0x2f4157,
+  cloud:     0xf3f1ea,
+  flame:     0xff7a1a,
+  ember:     0xffca5c,
+  bone:      0xe7e2d4,
+};
+
+// ============================================================================
+//  Renderer / scene / camera
+// ============================================================================
+// preserveDrawingBuffer only in freeze mode: it lets the screenshot tool grab a
+// frame long after we stopped drawing, which is what makes a cheap 3-frame
+// render enough. Leaving it on for playback would cost fps for nothing.
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: 'high-performance',
+  preserveDrawingBuffer: P_FREEZE,
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x1a2438, 90, 620);
+
+const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.5, 4000);
+camera.position.set(0, 30, 120);
+
+// ============================================================================
+//  Sky — one dome for the whole film. The director drives its uniforms, so a
+//  chapter change is a colour interpolation, not five separate skies.
+// ============================================================================
+const SKY = {
+  top:    new THREE.Color(0x1b2a52),
+  mid:    new THREE.Color(0x53628c),
+  bot:    new THREE.Color(0xd98a4a),
+  sun:    new THREE.Color(0xffc07a),
+  sunDir: new THREE.Vector3(-0.5, 0.35, -0.8).normalize(),
+  glow:   1.0,
+  stars:  0.0,
+};
+
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  depthWrite: false,
+  fog: false,
+  uniforms: {
+    topColor: { value: SKY.top },
+    midColor: { value: SKY.mid },
+    botColor: { value: SKY.bot },
+    sunColor: { value: SKY.sun },
+    sunDir:   { value: SKY.sunDir.clone() },
+    uGlow:    { value: 1.0 },
+    uStars:   { value: 0.0 },
+    uTime:    { value: 0.0 },
+  },
+  vertexShader: `
+    varying vec3 vDir;
+    void main() {
+      vDir = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`,
+  fragmentShader: `
+    uniform vec3 topColor, midColor, botColor, sunColor, sunDir;
+    uniform float uGlow, uStars, uTime;
+    varying vec3 vDir;
+
+    float hash31(vec3 p) {
+      p = fract(p * 0.3183099 + vec3(0.71, 0.113, 0.419));
+      p *= 17.0;
+      return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+    }
+
+    void main() {
+      vec3 d = normalize(vDir);
+      float h = d.y;
+      vec3 col = (h > 0.0) ? mix(midColor, topColor, pow(h, 0.7))
+                           : mix(midColor, botColor, pow(-h, 0.55));
+
+      // sun / celestial glow
+      float s = max(dot(d, normalize(sunDir)), 0.0);
+      col += sunColor * uGlow * (pow(s, 420.0) * 1.6 + pow(s, 22.0) * 0.40 + pow(s, 4.0) * 0.13);
+
+      // sparse stars, faded in per chapter
+      if (uStars > 0.001 && h > 0.02) {
+        vec3 q = floor(d * 260.0);
+        float n = hash31(q);
+        float star = smoothstep(0.9975, 1.0, n);
+        float tw = 0.65 + 0.35 * sin(uTime * 2.2 + n * 90.0);
+        col += vec3(0.9, 0.94, 1.0) * star * tw * uStars * smoothstep(0.02, 0.35, h);
+      }
+      gl_FragColor = vec4(col, 1.0);
+    }`,
+});
+const skyDome = new THREE.Mesh(new THREE.SphereGeometry(1400, 48, 28), skyMat);
+skyDome.frustumCulled = false;
+scene.add(skyDome);
+
+// ============================================================================
+//  Light rig — one sun with shadows, one fill, one hemisphere. The director
+//  retargets and recolours them per chapter rather than adding new lights.
+// ============================================================================
+const hemi = new THREE.HemisphereLight(0x8fa4d4, 0x3a3524, 0.55);
+scene.add(hemi);
+
+const sun = new THREE.DirectionalLight(0xffd9a0, 1.5);
+sun.position.set(-90, 110, -120);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -140;
+sun.shadow.camera.right = 140;
+sun.shadow.camera.top = 140;
+sun.shadow.camera.bottom = -140;
+sun.shadow.camera.near = 20;
+sun.shadow.camera.far = 520;
+sun.shadow.bias = -0.0007;
+sun.shadow.normalBias = 0.6;
+scene.add(sun);
+scene.add(sun.target);
+
+const fill = new THREE.DirectionalLight(0x6f86c4, 0.45);
+fill.position.set(80, 45, 90);
+scene.add(fill);
+
+function setSun(dir, color, intensity) {
+  sun.position.copy(dir);
+  sun.color.set(color);
+  sun.intensity = intensity;
+  SKY.sunDir.copy(dir).normalize();
+  skyMat.uniforms.sunDir.value.copy(SKY.sunDir);
+}
+
+// ============================================================================
+//  Small shared builders used by every chapter
+// ============================================================================
+function shadowed(mesh, cast = true, receive = true) {
+  mesh.castShadow = cast;
+  mesh.receiveShadow = receive;
+  return mesh;
+}
+
+// A lumpy rock / mountain mass: a sphere pushed around by trig noise, flattened
+// at the base so it always reads as sitting *on* the ground rather than in it.
+function makeRockMass(radius, height, colorLow, colorHigh, seedOff = 0, segs = 28) {
+  const geo = new THREE.SphereGeometry(radius, segs, Math.max(10, segs >> 1), 0, TAU, 0, Math.PI * 0.5);
+  const pos = geo.attributes.position;
+  const colors = [];
+  const cl = new THREE.Color(colorLow), ch = new THREE.Color(colorHigh), tmp = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const a = Math.atan2(z, x);
+    const n = 1
+      + Math.sin(a * 5.0 + seedOff) * 0.11
+      + Math.sin(a * 11.0 + y * 0.16 + seedOff * 2.3) * 0.06
+      + Math.cos(y * 0.33 + a * 3.0 + seedOff) * 0.05;
+    const yn = y * (1 + Math.sin(a * 7.0 + seedOff * 1.7) * 0.06);
+    pos.setXYZ(i, x * n, yn * (height / radius), z * n);
+    tmp.copy(cl).lerp(ch, clamp(y / radius, 0, 1));
+    colors.push(tmp.r, tmp.g, tmp.b);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  return shadowed(new THREE.Mesh(geo, STD({ vertexColors: true, roughness: 1.0, flatShading: true })));
+}
+
+// A jagged spire — the vertical rock vocabulary of 花果山 and 火焰山.
+function makeSpire(r, h, color, seedOff = 0, tilt = 0) {
+  const geo = new THREE.CylinderGeometry(r * 0.18, r, h, 7, 5, false);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const t = (y + h / 2) / h;
+    const n = 1 + Math.sin(Math.atan2(z, x) * 4.0 + t * 6.0 + seedOff) * 0.16;
+    pos.setXYZ(i, x * n, y + Math.sin(t * 5.0 + seedOff) * h * 0.02, z * n);
+  }
+  geo.computeVertexNormals();
+  // Wrap it so the ORIGIN IS THE BASE. A bare cylinder mesh is centred on its
+  // own middle, so every caller that places one at ground level buries half of
+  // it — and anything anchored to "the top" ends up floating in mid-air.
+  const m = shadowed(new THREE.Mesh(geo, STD({ color, roughness: 1.0, flatShading: true })));
+  m.position.y = h / 2;
+  const g = new THREE.Group();
+  g.add(m);
+  g.rotation.z = tilt;
+  g.userData.height = h;
+  return g;
+}
+
+// Round-topped foliage used for peach trees and pines.
+function makeTreeSimple(scale, trunkColor, leafColor, blossom) {
+  const g = new THREE.Group();
+  const trunk = shadowed(new THREE.Mesh(
+    new THREE.CylinderGeometry(0.22 * scale, 0.36 * scale, 3.0 * scale, 6),
+    STD({ color: trunkColor, roughness: 1.0, flatShading: true })));
+  trunk.position.y = 1.5 * scale;
+  g.add(trunk);
+  const canopy = [];
+  const n = 3;
+  for (let i = 0; i < n; i++) {
+    const r = (1.5 - i * 0.28) * scale;
+    const blob = shadowed(new THREE.Mesh(
+      new THREE.SphereGeometry(r, 9, 7),
+      STD({ color: leafColor, roughness: 1.0, flatShading: true })));
+    blob.position.set(rand(-0.5, 0.5) * scale, (3.0 + i * 0.85) * scale, rand(-0.5, 0.5) * scale);
+    blob.scale.y = 0.82;
+    g.add(blob);
+    canopy.push(blob);
+  }
+  if (blossom) {
+    const dummy = new THREE.Object3D();
+    const inst = new THREE.InstancedMesh(
+      new THREE.SphereGeometry(0.13 * scale, 5, 4),
+      STD({ color: 0xf2a8c0, roughness: 0.9, emissive: 0x3a1420, emissiveIntensity: 0.4 }),
+      26);
+    for (let i = 0; i < 26; i++) {
+      const b = canopy[randi(0, canopy.length - 1)];
+      const dir = new THREE.Vector3(rand(-1, 1), rand(-0.3, 1), rand(-1, 1)).normalize();
+      const rr = b.geometry.parameters.radius * 0.95;
+      dummy.position.copy(b.position).addScaledVector(dir, rr);
+      dummy.scale.setScalar(rand(0.7, 1.5));
+      dummy.updateMatrix();
+      inst.setMatrixAt(i, dummy.matrix);
+    }
+    g.add(inst);
+  }
+  g.userData.canopy = canopy;
+  return g;
+}
+
+// Chapter registry — each chapter file pushes {id, group, update} here.
+const CHAPTER_IMPL = {};
+function registerChapter(id, impl) { CHAPTER_IMPL[id] = impl; }
+
+// Everything a chapter builds goes under its own group, parked at the origin.
+// Only one is visible at a time, so chapters never leak into each other's
+// framing and the camera splines can all be written in local coordinates.
+function newChapterGroup(id) {
+  const g = new THREE.Group();
+  g.name = 'chapter_' + id;
+  g.visible = false;
+  scene.add(g);
+  return g;
+}
+
+
+// ============================================================================
+//  The actor kit
+//
+//  Everyone is built from the same rig so one walk cycle drives all of them:
+//    actor.rig = { root, body, head, armL, armR, legL, legR }
+//  Each limb is a group that pivots at its joint with a child group at the
+//  elbow/knee, so a two-bone bend is two rotations and no skinning.
+//  Origin of every actor is the SOLE OF THE FEET at y=0 — chapters place actors
+//  by putting them on terrain height directly, which is what keeps them from
+//  sinking or hovering.
+// ============================================================================
+
+function makeLimb(upperLen, lowerLen, r, mat) {
+  const root = new THREE.Group();
+  const up = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(r, Math.max(0.01, upperLen - 2 * r), 3, 7), mat));
+  up.position.y = -upperLen / 2;
+  root.add(up);
+  const lower = new THREE.Group();
+  lower.position.y = -upperLen;
+  root.add(lower);
+  const lo = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(r * 0.88, Math.max(0.01, lowerLen - 2 * r * 0.88), 3, 7), mat));
+  lo.position.y = -lowerLen / 2;
+  lower.add(lo);
+  return { root, lower, end: lowerLen };
+}
+
+function makeHand(r, mat) {
+  const h = shadowed(new THREE.Mesh(new THREE.SphereGeometry(r, 7, 6), mat));
+  return h;
+}
+
+// Shared skeleton assembly. Everything below is a costume on top of this.
+function makeBiped(cfg) {
+  const H       = cfg.height;
+  const skin    = cfg.skinMat;
+  const cloth   = cfg.clothMat;
+  const girth   = cfg.girth || 1.0;
+
+  const root = new THREE.Group();
+  const hipY = H * 0.46;
+  const legU = hipY * 0.52, legL = hipY * 0.48;
+  const shoulderY = H * 0.80;
+  const armU = H * 0.19, armL = H * 0.17;
+
+  const body = new THREE.Group();
+  body.position.y = hipY;
+  root.add(body);
+
+  const torso = shadowed(new THREE.Mesh(
+    new THREE.CapsuleGeometry(H * 0.115 * girth, H * 0.26, 4, 10), cloth));
+  torso.position.y = H * 0.17;
+  torso.scale.z = 0.82;
+  body.add(torso);
+
+  const head = new THREE.Group();
+  head.position.y = H * 0.35;
+  body.add(head);
+  const skull = shadowed(new THREE.Mesh(new THREE.SphereGeometry(H * 0.105, 14, 12), skin));
+  skull.scale.set(1, 1.06, 0.96);
+  head.add(skull);
+
+  // eyes — two dots is all it takes to make a silhouette read as a face
+  const eyeMat = BASIC({ color: 0x14161c });
+  for (const sx of [-1, 1]) {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(H * 0.016, 7, 6), eyeMat);
+    e.position.set(sx * H * 0.038, H * 0.012, H * 0.094);
+    head.add(e);
+  }
+
+  const arms = {};
+  for (const side of ['L', 'R']) {
+    const s = side === 'L' ? -1 : 1;
+    const limb = makeLimb(armU, armL, H * 0.032, cfg.armMat || cloth);
+    limb.root.position.set(s * H * 0.125 * girth, shoulderY - hipY, 0);
+    body.add(limb.root);
+    const hand = makeHand(H * 0.036, skin);
+    hand.position.y = -armL;
+    limb.lower.add(hand);
+    limb.hand = hand;
+    arms[side] = limb;
+  }
+
+  const legs = {};
+  for (const side of ['L', 'R']) {
+    const s = side === 'L' ? -1 : 1;
+    const limb = makeLimb(legU, legL, H * 0.042, cfg.legMat || cloth);
+    limb.root.position.set(s * H * 0.055, 0, 0);
+    body.add(limb.root);
+    const foot = shadowed(new THREE.Mesh(
+      new THREE.BoxGeometry(H * 0.075, H * 0.032, H * 0.14), cfg.footMat || STD({ color: C.ink })));
+    foot.position.set(0, -legL - H * 0.012, H * 0.032);
+    limb.lower.add(foot);
+    limb.foot = foot;
+    legs[side] = limb;
+  }
+
+  root.userData.rig = {
+    root, body, head, skull,
+    armL: arms.L, armR: arms.R,
+    legL: legs.L, legR: legs.R,
+    hipY, mode: cfg.mode || 'walk', phase: rand(0, TAU),
+  };
+  return root;
+}
+
+// One cycle for everybody. mode 'robe' hides the legs' contribution and sways
+// the whole body instead — a monk in a floor-length kasaya has no visible gait.
+function walk(actor, t, speed = 1, amp = 1) {
+  const r = actor.userData.rig;
+  if (!r) return;
+  const p = t * speed * 4.2 + r.phase;
+  const s = Math.sin(p), c = Math.cos(p);
+
+  if (r.mode !== 'robe') {
+    r.legL.root.rotation.x = s * 0.62 * amp;
+    r.legR.root.rotation.x = -s * 0.62 * amp;
+    r.legL.lower.rotation.x = Math.max(0, -Math.sin(p - 0.7)) * 0.85 * amp;
+    r.legR.lower.rotation.x = Math.max(0, -Math.sin(p + Math.PI - 0.7)) * 0.85 * amp;
+  }
+  if (!r.lockArmL) {
+    r.armL.root.rotation.x = -s * 0.52 * amp;
+    r.armL.lower.rotation.x = -Math.max(0, Math.sin(p)) * 0.4 * amp;
+  }
+  if (!r.lockArmR) {
+    r.armR.root.rotation.x = s * 0.52 * amp;
+    r.armR.lower.rotation.x = -Math.max(0, -Math.sin(p)) * 0.4 * amp;
+  }
+  r.body.position.y = r.hipY + Math.abs(c) * 0.045 * amp * (r.mode === 'robe' ? 0.5 : 1);
+  r.body.rotation.z = s * 0.035 * amp;
+  r.head.rotation.y = Math.sin(p * 0.31) * 0.18;
+}
+
+// Standing idle: breathing, a little weight shift.
+function idle(actor, t, amp = 1) {
+  const r = actor.userData.rig;
+  if (!r) return;
+  const p = t * 1.5 + r.phase;
+  r.body.position.y = r.hipY + Math.sin(p) * 0.02 * amp;
+  r.body.rotation.z = Math.sin(p * 0.6) * 0.02 * amp;
+  r.head.rotation.y = Math.sin(p * 0.42) * 0.2 * amp;
+  if (!r.lockArmL) r.armL.root.rotation.x = Math.sin(p * 0.8) * 0.06;
+  if (!r.lockArmR) r.armR.root.rotation.x = Math.sin(p * 0.8 + 1) * 0.06;
+}
+
+function faceTo(actor, x, z) {
+  actor.rotation.y = Math.atan2(x - actor.position.x, z - actor.position.z);
+}
+
+// ---------------------------------------------------------------------------
+//  孙悟空 — Sun Wukong
+// ---------------------------------------------------------------------------
+function makeWukong(height = 3.4) {
+  const furMat  = STD({ color: C.fur, roughness: 1.0 });
+  const faceMat = STD({ color: C.furLight, roughness: 1.0 });
+  const tunic   = STD({ color: C.imperialY, roughness: 0.8 });
+  const a = makeBiped({
+    height, skinMat: faceMat, clothMat: tunic,
+    armMat: furMat, legMat: furMat,
+    footMat: STD({ color: 0x7a2c22 }),
+  });
+  const r = a.userData.rig;
+  const H = height;
+
+  // muzzle + brow: the monkey read comes almost entirely from these two
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(H * 0.058, 10, 8), faceMat);
+  muzzle.position.set(0, -H * 0.022, H * 0.082);
+  muzzle.scale.set(1.15, 0.8, 1.0);
+  r.head.add(muzzle);
+  const brow = new THREE.Mesh(new THREE.BoxGeometry(H * 0.13, H * 0.02, H * 0.03), STD({ color: 0x6a4526 }));
+  brow.position.set(0, H * 0.042, H * 0.088);
+  r.head.add(brow);
+  // fur ruff around the face
+  const ruff = new THREE.Mesh(new THREE.TorusGeometry(H * 0.098, H * 0.022, 6, 16), furMat);
+  ruff.position.set(0, 0, H * 0.012);
+  ruff.rotation.x = 0.1;
+  r.head.add(ruff);
+  for (const sx of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(H * 0.032, 8, 6), faceMat);
+    ear.position.set(sx * H * 0.108, H * 0.01, 0);
+    ear.scale.set(0.5, 1, 1);
+    r.head.add(ear);
+  }
+  // 金箍 — the gold band. Wukong is unmistakable with it and generic without.
+  const band = new THREE.Mesh(
+    new THREE.TorusGeometry(H * 0.104, H * 0.013, 8, 22),
+    STD({ color: C.gold, metalness: 0.85, roughness: 0.25, emissive: 0x3a2a04, emissiveIntensity: 0.5 }));
+  band.position.y = H * 0.055;
+  band.rotation.x = Math.PI / 2;
+  r.head.add(band);
+
+  // 虎皮裙 — tiger-skin skirt
+  const skirt = shadowed(new THREE.Mesh(
+    new THREE.CylinderGeometry(H * 0.125, H * 0.165, H * 0.17, 12, 1, true),
+    STD({ color: 0xd98c2b, roughness: 1.0, side: THREE.DoubleSide })));
+  skirt.position.y = H * 0.02;
+  r.body.add(skirt);
+  for (let i = 0; i < 6; i++) {
+    const stripe = new THREE.Mesh(
+      new THREE.BoxGeometry(H * 0.018, H * 0.10, H * 0.012),
+      STD({ color: 0x3a2410 }));
+    const ang = (i / 6) * TAU + 0.3;
+    stripe.position.set(Math.cos(ang) * H * 0.15, H * 0.02, Math.sin(ang) * H * 0.15);
+    stripe.rotation.y = -ang;
+    r.body.add(stripe);
+  }
+  // red scarf
+  const scarf = new THREE.Mesh(new THREE.TorusGeometry(H * 0.088, H * 0.016, 6, 16), STD({ color: C.cinnabar }));
+  scarf.position.y = H * 0.30;
+  scarf.rotation.x = Math.PI / 2;
+  r.body.add(scarf);
+
+  // tail — a curved tube that the update hook can wag
+  const tailCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, -H * 0.05),
+    new THREE.Vector3(0, H * 0.10, -H * 0.22),
+    new THREE.Vector3(0, H * 0.24, -H * 0.34),
+    new THREE.Vector3(0, H * 0.36, -H * 0.24),
+  ]);
+  const tail = new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 18, H * 0.02, 6, false), furMat);
+  tail.position.y = H * 0.02;
+  r.body.add(tail);
+  r.tail = tail;
+
+  // 金箍棒 — held in the right hand, scalable along its own axis
+  const staffGroup = new THREE.Group();
+  const shaft = shadowed(new THREE.Mesh(
+    new THREE.CylinderGeometry(H * 0.019, H * 0.019, H * 1.5, 10),
+    STD({ color: 0x8a5a20, metalness: 0.5, roughness: 0.45 })));
+  staffGroup.add(shaft);
+  for (const sy of [-1, 1]) {
+    const cap = new THREE.Mesh(
+      new THREE.CylinderGeometry(H * 0.026, H * 0.026, H * 0.10, 10),
+      STD({ color: C.gold, metalness: 0.9, roughness: 0.2, emissive: 0x2e2205, emissiveIntensity: 0.6 }));
+    cap.position.y = sy * H * 0.72;
+    staffGroup.add(cap);
+  }
+  staffGroup.rotation.z = Math.PI / 2;   // held across the body by default
+  staffGroup.position.y = -r.armR.end;
+  r.armR.lower.add(staffGroup);
+  r.staff = staffGroup;
+  r.staffBaseLen = H * 1.5;
+
+  a.userData.kind = 'wukong';
+  return a;
+}
+
+// ---------------------------------------------------------------------------
+//  唐僧 — Tang Sanzang, the monk. Robe mode: no visible gait.
+// ---------------------------------------------------------------------------
+function makeTang(height = 3.7) {
+  const skin = STD({ color: 0xe8cba8, roughness: 0.9 });
+  const robe = STD({ color: C.monkRobe, roughness: 0.85 });
+  const a = makeBiped({ height, skinMat: skin, clothMat: robe, armMat: robe, mode: 'robe' });
+  const r = a.userData.rig;
+  const H = height;
+
+  // floor-length kasaya hides the legs entirely
+  r.legL.root.visible = false;
+  r.legR.root.visible = false;
+  const kasaya = shadowed(new THREE.Mesh(
+    new THREE.CylinderGeometry(H * 0.13, H * 0.24, H * 0.50, 16, 1, true),
+    STD({ color: C.monkRobe, roughness: 0.85, side: THREE.DoubleSide })));
+  kasaya.position.y = -H * 0.20;
+  r.body.add(kasaya);
+  // gold panel trim
+  for (let i = 0; i < 4; i++) {
+    const band = new THREE.Mesh(
+      new THREE.TorusGeometry(H * (0.145 + i * 0.028), H * 0.011, 6, 22),
+      STD({ color: C.monkGold, metalness: 0.6, roughness: 0.35 }));
+    band.position.y = -H * (0.04 + i * 0.11);
+    band.rotation.x = Math.PI / 2;
+    r.body.add(band);
+  }
+  const sash = new THREE.Mesh(new THREE.BoxGeometry(H * 0.075, H * 0.42, H * 0.02), STD({ color: C.monkGold }));
+  sash.position.set(0, H * 0.10, H * 0.10);
+  sash.rotation.z = 0.22;
+  r.body.add(sash);
+
+  // 毗卢帽 — the five-panel crown
+  const hat = new THREE.Group();
+  const crown = shadowed(new THREE.Mesh(
+    new THREE.CylinderGeometry(H * 0.108, H * 0.115, H * 0.075, 14),
+    STD({ color: C.monkGold, metalness: 0.55, roughness: 0.4 })));
+  hat.add(crown);
+  for (let i = 0; i < 5; i++) {
+    const ang = -Math.PI * 0.55 + (i / 4) * Math.PI * 1.1;
+    const petal = new THREE.Mesh(
+      new THREE.ConeGeometry(H * 0.028, H * 0.075, 4),
+      STD({ color: C.cinnabar, metalness: 0.3, roughness: 0.5 }));
+    petal.position.set(Math.sin(ang) * H * 0.085, H * 0.072, Math.cos(ang) * H * 0.085);
+    petal.rotation.set(Math.cos(ang) * 0.22, ang, -Math.sin(ang) * 0.22);
+    hat.add(petal);
+  }
+  hat.position.y = H * 0.105;
+  r.head.add(hat);
+  r.hat = hat;
+
+  // 锡杖 — ringed staff, in the left hand, held upright
+  const staff = new THREE.Group();
+  const pole = shadowed(new THREE.Mesh(
+    new THREE.CylinderGeometry(H * 0.014, H * 0.016, H * 0.95, 8),
+    STD({ color: 0x6b4a24, roughness: 0.9 })));
+  staff.add(pole);
+  const finial = new THREE.Mesh(
+    new THREE.TorusGeometry(H * 0.05, H * 0.010, 6, 18),
+    STD({ color: C.monkGold, metalness: 0.8, roughness: 0.25, emissive: 0x2a1e04, emissiveIntensity: 0.5 }));
+  finial.position.y = H * 0.52;
+  staff.add(finial);
+  for (let i = 0; i < 4; i++) {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(H * 0.020, H * 0.005, 5, 12),
+      STD({ color: C.monkGold, metalness: 0.8, roughness: 0.3 }));
+    ring.position.set((i - 1.5) * H * 0.026, H * 0.545, 0);
+    staff.add(ring);
+  }
+  staff.position.set(0, -r.armL.end - H * 0.32, 0);
+  r.armL.lower.add(staff);
+  r.staff = staff;
+  r.lockArmL = true;
+  r.armL.root.rotation.x = -0.25;
+
+  a.userData.kind = 'tang';
+  return a;
+}
+
+// ---------------------------------------------------------------------------
+//  猪八戒 — Zhu Bajie. Wide, low, and unmistakably a pig from behind.
+// ---------------------------------------------------------------------------
+function makeBajie(height = 3.2) {
+  const skin = STD({ color: C.pigSkin, roughness: 0.95 });
+  const robe = STD({ color: 0x4d6b52, roughness: 0.9 });
+  const a = makeBiped({ height, skinMat: skin, clothMat: robe, girth: 1.45 });
+  const r = a.userData.rig;
+  const H = height;
+
+  const belly = shadowed(new THREE.Mesh(new THREE.SphereGeometry(H * 0.20, 14, 12), robe));
+  belly.position.y = H * 0.14;
+  belly.scale.set(1.05, 0.92, 0.86);
+  r.body.add(belly);
+
+  const snout = new THREE.Mesh(new THREE.CylinderGeometry(H * 0.045, H * 0.052, H * 0.06, 10), skin);
+  snout.rotation.x = Math.PI / 2;
+  snout.position.set(0, -H * 0.018, H * 0.108);
+  r.head.add(snout);
+  const nostrilMat = BASIC({ color: 0x6a3f42 });
+  for (const sx of [-1, 1]) {
+    const n = new THREE.Mesh(new THREE.CircleGeometry(H * 0.011, 8), nostrilMat);
+    n.position.set(sx * H * 0.017, -H * 0.018, H * 0.139);
+    r.head.add(n);
+  }
+  for (const sx of [-1, 1]) {
+    const ear = shadowed(new THREE.Mesh(new THREE.ConeGeometry(H * 0.055, H * 0.13, 5), skin));
+    ear.position.set(sx * H * 0.10, H * 0.045, -H * 0.01);
+    ear.rotation.set(0.5, 0, sx * 1.15);
+    ear.scale.z = 0.35;
+    r.head.add(ear);
+  }
+  for (const sx of [-1, 1]) {
+    const tusk = new THREE.Mesh(new THREE.ConeGeometry(H * 0.012, H * 0.05, 5), STD({ color: C.bone }));
+    tusk.position.set(sx * H * 0.032, -H * 0.005, H * 0.115);
+    tusk.rotation.x = -0.35;
+    r.head.add(tusk);
+  }
+
+  // 九齿钉耙 — nine-tooth rake, over the shoulder
+  const rake = new THREE.Group();
+  const handle = shadowed(new THREE.Mesh(
+    new THREE.CylinderGeometry(H * 0.017, H * 0.019, H * 0.95, 8), STD({ color: 0x5b4327 })));
+  rake.add(handle);
+  const headBar = shadowed(new THREE.Mesh(
+    new THREE.BoxGeometry(H * 0.30, H * 0.045, H * 0.05),
+    STD({ color: 0x9aa0a8, metalness: 0.8, roughness: 0.35 })));
+  headBar.position.y = H * 0.50;
+  rake.add(headBar);
+  for (let i = 0; i < 9; i++) {
+    const tooth = new THREE.Mesh(
+      new THREE.ConeGeometry(H * 0.013, H * 0.075, 5),
+      STD({ color: 0xb9c0c8, metalness: 0.85, roughness: 0.28 }));
+    tooth.position.set((i - 4) * H * 0.033, H * 0.545, 0);
+    rake.add(tooth);
+  }
+  rake.position.set(0, -r.armR.end - H * 0.30, 0);
+  rake.rotation.z = -0.25;
+  r.armR.lower.add(rake);
+  r.rake = rake;
+
+  a.userData.kind = 'bajie';
+  return a;
+}
+
+// ---------------------------------------------------------------------------
+//  沙悟净 — Sha Wujing. Blue robe, red hair, skull necklace, crescent staff.
+// ---------------------------------------------------------------------------
+function makeWujing(height = 3.6) {
+  const skin = STD({ color: 0x8fa08f, roughness: 0.95 });
+  const robe = STD({ color: C.shaRobe, roughness: 0.9 });
+  const a = makeBiped({ height, skinMat: skin, clothMat: robe });
+  const r = a.userData.rig;
+  const H = height;
+
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(H * 0.115, 12, 10), STD({ color: 0x8e3b22, roughness: 1.0 }));
+  hair.position.y = H * 0.03;
+  hair.scale.set(1.06, 1.12, 1.04);
+  r.head.add(hair);
+  const beard = new THREE.Mesh(new THREE.ConeGeometry(H * 0.05, H * 0.15, 7), STD({ color: 0x8e3b22, roughness: 1.0 }));
+  beard.position.set(0, -H * 0.10, H * 0.055);
+  beard.rotation.x = 0.22;
+  r.head.add(beard);
+
+  // 九颗骷髅项链
+  for (let i = 0; i < 9; i++) {
+    const ang = -Math.PI * 0.75 + (i / 8) * Math.PI * 1.5;
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(H * 0.021, 7, 6), STD({ color: C.bone, roughness: 0.85 }));
+    skull.position.set(Math.sin(ang) * H * 0.115, H * 0.285 - Math.cos(ang) * H * 0.018, Math.cos(ang) * H * 0.085 + H * 0.02);
+    r.body.add(skull);
+  }
+
+  // 降妖宝杖 — crescent-bladed staff
+  const staff = new THREE.Group();
+  const pole = shadowed(new THREE.Mesh(
+    new THREE.CylinderGeometry(H * 0.016, H * 0.018, H * 1.0, 8), STD({ color: 0x4a3a26 })));
+  staff.add(pole);
+  const crescent = new THREE.Mesh(
+    new THREE.TorusGeometry(H * 0.07, H * 0.014, 6, 14, Math.PI * 1.25),
+    STD({ color: 0xc3ccd6, metalness: 0.85, roughness: 0.3 }));
+  crescent.position.y = H * 0.53;
+  crescent.rotation.z = -Math.PI * 0.62;
+  staff.add(crescent);
+  const spade = new THREE.Mesh(new THREE.ConeGeometry(H * 0.032, H * 0.09, 6), STD({ color: 0xc3ccd6, metalness: 0.8, roughness: 0.3 }));
+  spade.position.y = -H * 0.545;
+  spade.rotation.x = Math.PI;
+  staff.add(spade);
+  staff.position.set(0, -r.armR.end - H * 0.28, 0);
+  staff.rotation.z = 0.18;
+  r.armR.lower.add(staff);
+  r.staff = staff;
+
+  // luggage pole on the back — Wujing carries the baggage the whole way
+  const pack = shadowed(new THREE.Mesh(new THREE.BoxGeometry(H * 0.15, H * 0.13, H * 0.09), STD({ color: 0x7a5c33 })));
+  pack.position.set(0, H * 0.20, -H * 0.135);
+  r.body.add(pack);
+
+  a.userData.kind = 'wujing';
+  return a;
+}
+
+// ---------------------------------------------------------------------------
+//  白龙马 — the white horse. Four limbs on the same rig, phase-offset.
+// ---------------------------------------------------------------------------
+function makeHorse(scale = 1) {
+  const white = STD({ color: 0xece7dd, roughness: 0.95 });
+  const mane  = STD({ color: 0xd6cbb6, roughness: 1.0 });
+  const g = new THREE.Group();
+  const H = 3.0 * scale;
+
+  const body = new THREE.Group();
+  body.position.y = H * 0.62;
+  g.add(body);
+
+  // The barrel runs nose-to-tail, i.e. along Z. Rotating it about Z instead
+  // would lay the horse's body across its own direction of travel.
+  const barrel = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(H * 0.20, H * 0.52, 5, 12), white));
+  barrel.rotation.x = Math.PI / 2;
+  barrel.scale.set(0.88, 1, 1);
+  body.add(barrel);
+
+  const neck = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(H * 0.11, H * 0.155, H * 0.42, 9), white));
+  neck.position.set(0, H * 0.20, H * 0.30);
+  neck.rotation.x = 0.62;
+  body.add(neck);
+
+  const headG = new THREE.Group();
+  headG.position.set(0, H * 0.38, H * 0.48);
+  body.add(headG);
+  const skull = shadowed(new THREE.Mesh(new THREE.BoxGeometry(H * 0.14, H * 0.15, H * 0.30), white));
+  skull.rotation.x = 0.42;
+  headG.add(skull);
+  const muzzle = shadowed(new THREE.Mesh(new THREE.BoxGeometry(H * 0.10, H * 0.09, H * 0.12), white));
+  muzzle.position.set(0, -H * 0.085, H * 0.15);
+  headG.add(muzzle);
+  for (const sx of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(H * 0.03, H * 0.08, 5), white);
+    ear.position.set(sx * H * 0.055, H * 0.10, -H * 0.06);
+    headG.add(ear);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(H * 0.018, 6, 5), BASIC({ color: 0x1b1b20 }));
+    eye.position.set(sx * H * 0.072, H * 0.02, H * 0.03);
+    headG.add(eye);
+  }
+  const forelock = new THREE.Mesh(new THREE.BoxGeometry(H * 0.07, H * 0.10, H * 0.03), mane);
+  forelock.position.set(0, H * 0.08, -H * 0.10);
+  headG.add(forelock);
+
+  // crest mane along the neck
+  for (let i = 0; i < 7; i++) {
+    const t = i / 6;
+    const tuft = new THREE.Mesh(new THREE.BoxGeometry(H * 0.035, H * 0.09, H * 0.05), mane);
+    tuft.position.set(0, H * (0.10 + t * 0.30), H * (0.16 + t * 0.30));
+    tuft.rotation.x = 0.62;
+    body.add(tuft);
+  }
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(H * 0.075, H * 0.42, 7), mane);
+  tail.position.set(0, H * 0.02, -H * 0.40);
+  tail.rotation.x = -0.55;
+  body.add(tail);
+
+  // red saddle and blanket — this is a pilgrim's horse, not a wild one
+  const saddle = shadowed(new THREE.Mesh(new THREE.BoxGeometry(H * 0.30, H * 0.07, H * 0.30), STD({ color: C.cinnabar })));
+  saddle.position.y = H * 0.20;
+  body.add(saddle);
+  const blanket = shadowed(new THREE.Mesh(new THREE.BoxGeometry(H * 0.42, H * 0.02, H * 0.38), STD({ color: C.imperialY })));
+  blanket.position.y = H * 0.165;
+  body.add(blanket);
+
+  const legs = [];
+  const legDefs = [[-1, 1], [1, 1], [-1, -1], [1, -1]];
+  for (let i = 0; i < 4; i++) {
+    const [sx, sz] = legDefs[i];
+    const limb = makeLimb(H * 0.30, H * 0.32, H * 0.045, white);
+    limb.root.position.set(sx * H * 0.135, -H * 0.02, sz * H * 0.24);
+    body.add(limb.root);
+    const hoof = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(H * 0.05, H * 0.055, H * 0.05, 7), STD({ color: 0x4b4038 })));
+    hoof.position.y = -H * 0.32;
+    limb.lower.add(hoof);
+    legs.push(limb);
+  }
+
+  g.userData.horse = { body, headG, legs, baseY: H * 0.62, H };
+  return g;
+}
+
+function horseWalk(horse, t, speed = 1, amp = 1) {
+  const h = horse.userData.horse;
+  const p = t * speed * 3.6;
+  const offs = [0, Math.PI, Math.PI, 0];   // diagonal pairs
+  for (let i = 0; i < 4; i++) {
+    const ph = p + offs[i];
+    h.legs[i].root.rotation.x = Math.sin(ph) * 0.48 * amp;
+    h.legs[i].lower.rotation.x = Math.max(0, -Math.sin(ph - 0.6)) * 0.55 * amp;
+  }
+  h.body.position.y = h.baseY + Math.abs(Math.cos(p)) * 0.05 * amp;
+  h.headG.rotation.x = Math.sin(p) * 0.06 * amp;
+}
+
+// ---------------------------------------------------------------------------
+//  天兵 — a celestial soldier. Deliberately uniform: they are a crowd, not
+//  characters, and the crowd is what makes 大闹天宫 read as a battle.
+// ---------------------------------------------------------------------------
+function makeSoldier(height = 3.5, plumeColor = 0xd94f2b) {
+  const armour = STD({ color: 0x9fa8b8, metalness: 0.75, roughness: 0.42 });
+  const skin   = STD({ color: 0xd9b58e, roughness: 0.9 });
+  const a = makeBiped({ height, skinMat: skin, clothMat: armour, footMat: STD({ color: 0x3a3a42 }) });
+  const r = a.userData.rig;
+  const H = height;
+
+  // shoulder pauldrons + helmet + plume
+  for (const sx of [-1, 1]) {
+    const pauld = shadowed(new THREE.Mesh(
+      new THREE.SphereGeometry(H * 0.062, 8, 6, 0, TAU, 0, Math.PI * 0.55),
+      STD({ color: C.darkGold, metalness: 0.8, roughness: 0.35 })));
+    pauld.position.set(sx * H * 0.128, H * 0.335, 0);
+    r.body.add(pauld);
+  }
+  const helm = shadowed(new THREE.Mesh(
+    new THREE.ConeGeometry(H * 0.115, H * 0.14, 10),
+    STD({ color: C.darkGold, metalness: 0.85, roughness: 0.3 })));
+  helm.position.y = H * 0.075;
+  r.head.add(helm);
+  const plume = new THREE.Mesh(new THREE.ConeGeometry(H * 0.022, H * 0.11, 6), STD({ color: plumeColor }));
+  plume.position.y = H * 0.20;
+  r.head.add(plume);
+  const cuirass = shadowed(new THREE.Mesh(
+    new THREE.CylinderGeometry(H * 0.128, H * 0.135, H * 0.20, 12),
+    STD({ color: C.cinnabar, roughness: 0.6 })));
+  cuirass.position.y = H * 0.20;
+  cuirass.scale.z = 0.82;
+  r.body.add(cuirass);
+
+  // spear, gripped upright in the right hand
+  const spear = new THREE.Group();
+  const shaft = shadowed(new THREE.Mesh(
+    new THREE.CylinderGeometry(H * 0.013, H * 0.013, H * 1.25, 7), STD({ color: 0x5d4326 })));
+  spear.add(shaft);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(H * 0.030, H * 0.15, 6),
+    STD({ color: 0xd6dde6, metalness: 0.9, roughness: 0.2 }));
+  tip.position.y = H * 0.70;
+  spear.add(tip);
+  const tassel = new THREE.Mesh(new THREE.ConeGeometry(H * 0.026, H * 0.07, 6), STD({ color: C.cinnabar }));
+  tassel.position.y = H * 0.60;
+  tassel.rotation.x = Math.PI;
+  spear.add(tassel);
+  spear.position.set(0, -r.armR.end - H * 0.36, 0);
+  r.armR.lower.add(spear);
+  r.spear = spear;
+  r.lockArmR = true;
+  r.armR.root.rotation.x = -0.15;
+
+  a.userData.kind = 'soldier';
+  return a;
+}
+
+// ---------------------------------------------------------------------------
+//  A small monkey of 花果山 — Wukong's subjects, built cheap and used in bulk.
+// ---------------------------------------------------------------------------
+function makeMonkeySmall(scale = 1) {
+  const fur = STD({ color: pick([0xa8794a, 0xb98a55, 0x94663a]), roughness: 1.0 });
+  const face = STD({ color: C.furLight, roughness: 1.0 });
+  const g = new THREE.Group();
+  const s = 0.9 * scale;
+  const body = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.20 * s, 0.28 * s, 3, 8), fur));
+  body.position.y = 0.44 * s;
+  g.add(body);
+  const head = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.19 * s, 9, 8), fur));
+  head.position.y = 0.80 * s;
+  g.add(head);
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.11 * s, 8, 6), face);
+  muzzle.position.set(0, 0.77 * s, 0.14 * s);
+  muzzle.scale.set(1.1, 0.85, 1);
+  g.add(muzzle);
+  for (const sx of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.06 * s, 6, 5), face);
+    ear.position.set(sx * 0.185 * s, 0.82 * s, 0);
+    ear.scale.x = 0.5;
+    g.add(ear);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.028 * s, 6, 5), BASIC({ color: 0x14161c }));
+    eye.position.set(sx * 0.065 * s, 0.855 * s, 0.165 * s);
+    g.add(eye);
+    const arm = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.055 * s, 0.28 * s, 3, 6), fur));
+    arm.position.set(sx * 0.24 * s, 0.44 * s, 0);
+    arm.rotation.z = sx * 0.35;
+    g.add(arm);
+    const leg = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.065 * s, 0.24 * s, 3, 6), fur));
+    leg.position.set(sx * 0.11 * s, 0.17 * s, 0);
+    g.add(leg);
+  }
+  const tailCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0.34 * s, -0.16 * s),
+    new THREE.Vector3(0, 0.52 * s, -0.42 * s),
+    new THREE.Vector3(0, 0.86 * s, -0.44 * s),
+  ]);
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(tailCurve, 12, 0.035 * s, 5, false), fur));
+  g.userData.monkey = { body, head, base: 0.44 * s, phase: rand(0, TAU) };
+  return g;
+}
+
+function monkeyIdle(m, t) {
+  const d = m.userData.monkey;
+  const p = t * 2.4 + d.phase;
+  d.body.position.y = d.base + Math.abs(Math.sin(p)) * 0.06;
+  d.head.rotation.y = Math.sin(p * 0.7) * 0.5;
+  m.rotation.y = m.userData.baseRotY !== undefined
+    ? m.userData.baseRotY + Math.sin(p * 0.31) * 0.25
+    : m.rotation.y;
+}
+
+
+// ============================================================================
+//  Shared effects and architecture
+//
+//  Every factory here returns an object with a .group (or .mesh) and an
+//  .update(t, dt). Chapters own the placement; this file owns the behaviour.
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+//  Water — a lit standard material with wave displacement patched into the
+//  vertex stage, so it still takes the chapter's sun, shadows and fog.
+// ---------------------------------------------------------------------------
+function makeWater(size, segs, color, amp = 0.55, opts = {}) {
+  const geo = new THREE.PlaneGeometry(size, size, segs, segs);
+  geo.rotateX(-Math.PI / 2);
+  const mat = STD({
+    color,
+    roughness: opts.roughness !== undefined ? opts.roughness : 0.22,
+    metalness: opts.metalness !== undefined ? opts.metalness : 0.35,
+    transparent: !!opts.transparent,
+    opacity: opts.opacity !== undefined ? opts.opacity : 1.0,
+  });
+  const uTime = { value: 0 };
+  const uAmp = { value: amp };
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uTime = uTime;
+    sh.uniforms.uAmp = uAmp;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', `
+        #include <common>
+        uniform float uTime; uniform float uAmp;
+        float waveH(vec2 p) {
+          return uAmp * (sin(p.x * 0.085 + uTime * 0.85) * cos(p.y * 0.072 - uTime * 0.62)
+                       + 0.5 * sin(p.x * 0.21 - p.y * 0.17 + uTime * 1.5));
+        }`)
+      .replace('#include <beginnormal_vertex>', `
+        #include <beginnormal_vertex>
+        {
+          vec2 p = position.xz;
+          float e = 1.2;
+          float hx = waveH(p + vec2(e, 0.0)) - waveH(p - vec2(e, 0.0));
+          float hz = waveH(p + vec2(0.0, e)) - waveH(p - vec2(0.0, e));
+          objectNormal = normalize(vec3(-hx / (2.0 * e), 1.0, -hz / (2.0 * e)));
+        }`)
+      .replace('#include <begin_vertex>', `
+        #include <begin_vertex>
+        transformed.y += waveH(position.xz);`);
+  };
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  return { mesh, update: (t) => { uTime.value = t; } };
+}
+
+// ---------------------------------------------------------------------------
+//  Waterfall — scrolling translucent sheets. Three layers at slightly
+//  different speeds is what stops it looking like a moving wallpaper.
+// ---------------------------------------------------------------------------
+function makeWaterfall(width, height, opts = {}) {
+  const group = new THREE.Group();
+  const uTime = { value: 0 };
+  const layers = 3;
+  for (let i = 0; i < layers; i++) {
+    const mat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: opts.blending || THREE.NormalBlending,
+      uniforms: {
+        uTime: uTime,
+        uSpeed: { value: (1.5 + i * 0.55) * (opts.speed !== undefined ? opts.speed / 1.5 : 1) },
+        uColor: { value: new THREE.Color(opts.color || 0xcfe4f2) },
+        uOpacity: { value: (opts.opacity || 0.55) * (1 - i * 0.18) },
+        uScale: { value: (opts.scale || 5.0) + i * 3.0 },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `
+        uniform float uTime, uSpeed, uOpacity, uScale;
+        uniform vec3 uColor;
+        varying vec2 vUv;
+        float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float noise(vec2 p){
+          vec2 i = floor(p), f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(hash(i), hash(i + vec2(1,0)), f.x),
+                     mix(hash(i + vec2(0,1)), hash(i + vec2(1,1)), f.x), f.y);
+        }
+        void main() {
+          vec2 uv = vUv;
+          float streak = noise(vec2(uv.x * uScale, uv.y * 2.2 - uTime * uSpeed));
+          streak += 0.5 * noise(vec2(uv.x * uScale * 2.3, uv.y * 4.0 - uTime * uSpeed * 1.6));
+          streak = smoothstep(0.45, 1.05, streak);
+          // fade at the vertical edges, froth at the foot
+          float edge = smoothstep(0.0, 0.12, uv.x) * smoothstep(1.0, 0.88, uv.x);
+          float foot = smoothstep(0.0, 0.22, uv.y);
+          float top  = smoothstep(1.0, 0.72, uv.y);
+          float a = uOpacity * edge * (0.35 + 0.65 * streak) * mix(0.25, 1.0, foot) * mix(0.0, 1.0, top);
+          vec3 col = mix(uColor * 0.72, vec3(1.0), streak * 0.8);
+          gl_FragColor = vec4(col, clamp(a, 0.0, 1.0));
+        }`,
+    });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(width * (1 - i * 0.05), height, 1, 1), mat);
+    m.position.z = i * 0.35;
+    m.renderOrder = 5 + i;
+    group.add(m);
+  }
+  return { group, update: (t) => { uTime.value = t; } };
+}
+
+// ---------------------------------------------------------------------------
+//  Point fields — embers, petals, snow, sparks, motes. One shader, four moods.
+//  Points are always camera-facing, which is exactly what these need, and they
+//  cost almost nothing next to instanced billboards.
+// ---------------------------------------------------------------------------
+function makePointField(count, opts) {
+  const style   = opts.style || 'glow';
+  const area    = opts.area || new THREE.Vector3(60, 30, 60);
+  const origin  = opts.origin || new THREE.Vector3(0, 0, 0);
+  const rise    = opts.rise !== undefined ? opts.rise : 4.0;
+  const drift   = opts.drift !== undefined ? opts.drift : 1.2;
+  const sizeMin = opts.sizeMin || 1.0;
+  const sizeMax = opts.sizeMax || 3.0;
+  const colA    = new THREE.Color(opts.colorA || 0xffb457);
+  const colB    = new THREE.Color(opts.colorB || 0xff5a1e);
+  const spin    = opts.spin !== undefined ? opts.spin : 0.0;
+
+  const pos = new Float32Array(count * 3);
+  const seed = new Float32Array(count);
+  const size = new Float32Array(count);
+  const mixv = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    pos[i * 3 + 0] = origin.x + rand(-area.x, area.x);
+    pos[i * 3 + 1] = origin.y + rand(0, area.y);
+    pos[i * 3 + 2] = origin.z + rand(-area.z, area.z);
+    seed[i] = rnd();
+    size[i] = rand(sizeMin, sizeMax);
+    mixv[i] = rnd();
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  geo.setAttribute('aMix', new THREE.BufferAttribute(mixv, 1));
+  geo.computeBoundingSphere();
+  geo.boundingSphere.radius = Math.max(area.x, area.y, area.z) * 3;
+
+  const uTime = { value: 0 };
+  const uFade = { value: 1 };
+  const mat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: (style === 'ember' || style === 'spark' || style === 'glow')
+      ? THREE.AdditiveBlending : THREE.NormalBlending,
+    uniforms: {
+      uTime: uTime, uFade: uFade,
+      uPix: { value: Math.min(window.devicePixelRatio, 2) },
+      uColA: { value: colA }, uColB: { value: colB },
+      uRise: { value: rise }, uDrift: { value: drift },
+      uSpanY: { value: area.y }, uOriginY: { value: origin.y },
+      uSpin: { value: spin },
+    },
+    vertexShader: `
+      attribute float aSeed, aSize, aMix;
+      uniform float uTime, uPix, uRise, uDrift, uSpanY, uOriginY, uSpin;
+      varying float vSeed, vMix, vAlpha;
+      void main() {
+        vSeed = aSeed; vMix = aMix;
+        vec3 p = position;
+        float life = fract(aSeed + uTime * uRise / max(uSpanY, 0.001));
+        p.y = uOriginY + life * uSpanY;
+        p.x += sin(uTime * (0.4 + aSeed) + aSeed * 30.0) * uDrift;
+        p.z += cos(uTime * (0.33 + aSeed * 0.8) + aSeed * 22.0) * uDrift;
+        if (uSpin > 0.0) {
+          float a = uTime * uSpin * (0.4 + aSeed);
+          float ca = cos(a), sa = sin(a);
+          p.xz = mat2(ca, -sa, sa, ca) * p.xz;
+        }
+        vAlpha = smoothstep(0.0, 0.12, life) * smoothstep(1.0, 0.72, life);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_PointSize = min(aSize * uPix * (260.0 / max(-mv.z, 1.0)), 26.0 * uPix);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 uColA, uColB;
+      uniform float uFade, uTime;
+      varying float vSeed, vMix, vAlpha;
+      void main() {
+        vec2 d = gl_PointCoord - 0.5;
+        float r = length(d);
+        ${style === 'petal' ? `
+          // petal: a soft lens shape, not a disc
+          float shape = smoothstep(0.5, 0.06, length(vec2(d.x * 1.9, d.y)));
+        ` : style === 'snow' ? `
+          float shape = smoothstep(0.5, 0.18, r);
+        ` : `
+          float shape = smoothstep(0.5, 0.0, r);
+          shape *= shape;
+        `}
+        float tw = 0.75 + 0.25 * sin(uTime * (3.0 + vSeed * 6.0) + vSeed * 40.0);
+        vec3 col = mix(uColA, uColB, vMix);
+        gl_FragColor = vec4(col, shape * vAlpha * uFade * tw);
+        if (gl_FragColor.a < 0.01) discard;
+      }`,
+  });
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  return { points, mat, update: (t) => { uTime.value = t; }, setFade: (f) => { uFade.value = f; } };
+}
+
+// ---------------------------------------------------------------------------
+//  Cloud vocabulary — the sea of cloud the celestial chapters stand on, and
+//  the 筋斗云 somersault cloud that carries Wukong.
+// ---------------------------------------------------------------------------
+function makeCloudPuff(scale = 1, color = 0xf6f3ec, emissive = 0x2a3050, opacity = 1) {
+  const g = new THREE.Group();
+  const mat = STD({ color, roughness: 1.0, emissive, emissiveIntensity: 0.35, flatShading: true,
+    transparent: opacity < 1, opacity, depthWrite: opacity > 0.85 });
+  const n = randi(5, 8);
+  for (let i = 0; i < n; i++) {
+    const r = rand(0.6, 1.25) * scale;
+    const b = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), mat);
+    b.position.set(rand(-1.5, 1.5) * scale, rand(-0.25, 0.3) * scale, rand(-1.0, 1.0) * scale);
+    b.scale.y = rand(0.45, 0.7);
+    g.add(b);
+  }
+  // curled tips — the auspicious-cloud silhouette from painted scrolls
+  for (let i = 0; i < 3; i++) {
+    const t = new THREE.Mesh(new THREE.TorusGeometry(0.42 * scale, 0.2 * scale, 6, 12), mat);
+    t.position.set(rand(-1.7, 1.7) * scale, rand(-0.1, 0.15) * scale, rand(-0.9, 0.9) * scale);
+    t.rotation.x = Math.PI / 2;
+    t.scale.y = 0.6;
+    g.add(t);
+  }
+  return g;
+}
+
+function makeCloudSea(count, radius, y, opts = {}) {
+  const group = new THREE.Group();
+  const puffs = [];
+  const minR = opts.minR || 0;
+  for (let i = 0; i < count; i++) {
+    const a = rnd() * TAU, r = minR + Math.sqrt(rnd()) * (radius - minR);
+    const p = makeCloudPuff(rand(2.2, 5.0) * (opts.scale || 1), opts.color || 0xf1efe8, opts.emissive || 0x36406a, opts.opacity !== undefined ? opts.opacity : 1);
+    p.position.set(Math.cos(a) * r, y + rand(-3, 3), Math.sin(a) * r);
+    group.add(p);
+    puffs.push({ p, spd: rand(0.35, 1.1), phase: rand(0, TAU), baseY: p.position.y });
+  }
+  return {
+    group,
+    update: (t) => {
+      for (const c of puffs) {
+        c.p.position.y = c.baseY + Math.sin(t * 0.35 + c.phase) * 1.1;
+        c.p.rotation.y = c.phase + t * 0.02 * c.spd;
+      }
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+//  Light shafts — a soft additive cone. Used for the seal on 五行山 and for
+//  the Buddha-light of 灵山.
+// ---------------------------------------------------------------------------
+function makeGodRays(radius, height, color, opacity = 0.22, blades = 9) {
+  const group = new THREE.Group();
+  const uTime = { value: 0 };
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    uniforms: { uColor: { value: new THREE.Color(color) }, uOpacity: { value: opacity }, uTime },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `
+      uniform vec3 uColor; uniform float uOpacity, uTime;
+      varying vec2 vUv;
+      void main() {
+        float v = smoothstep(0.0, 0.45, vUv.y) * smoothstep(1.0, 0.35, vUv.y);
+        float h = smoothstep(0.0, 0.5, vUv.x) * smoothstep(1.0, 0.5, vUv.x);
+        float flick = 0.82 + 0.18 * sin(uTime * 1.6 + vUv.x * 8.0);
+        gl_FragColor = vec4(uColor, v * h * uOpacity * flick);
+      }`,
+  });
+  for (let i = 0; i < blades; i++) {
+    const a = (i / blades) * Math.PI;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(radius * 2, height), mat);
+    m.rotation.y = a;
+    m.renderOrder = 8;
+    group.add(m);
+  }
+  return { group, mat, update: (t) => { uTime.value = t; } };
+}
+
+// Expanding halo rings — the visual grammar for "something divine just happened".
+function makeHalo(color, count = 4, maxR = 14, opacity = 0.5) {
+  const group = new THREE.Group();
+  const rings = [];
+  for (let i = 0; i < count; i++) {
+    const mat = new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity, side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    });
+    const m = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.0, 48), mat);
+    m.rotation.x = -Math.PI / 2;
+    m.renderOrder = 9;
+    group.add(m);
+    rings.push({ m, mat, off: i / count });
+  }
+  return {
+    group,
+    update: (t, speed = 0.35, gain = 1) => {
+      for (const r of rings) {
+        const k = (t * speed + r.off) % 1;
+        const s = 0.4 + k * maxR;
+        r.m.scale.setScalar(s);
+        r.mat.opacity = opacity * (1 - k) * gain;
+      }
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+//  Architecture — the temple/palace vocabulary. Everything gold-and-cinnabar
+//  in chapters 2 and 5 is assembled from these three functions.
+// ---------------------------------------------------------------------------
+
+// A hip roof with upturned eaves, built as stacked tile courses whose overhang
+// curves upward toward the corners. Cheap, and reads unmistakably as Chinese.
+function makeRoof(w, d, h, opts = {}) {
+  const g = new THREE.Group();
+  const courses = opts.courses || 9;
+  const tileMat = STD({ color: opts.color || C.imperialY, roughness: 0.55, metalness: 0.28 });
+  const trimMat = STD({ color: opts.trim || C.cinnabar, roughness: 0.7 });
+  for (let i = 0; i < courses; i++) {
+    const t = i / (courses - 1);
+    // the profile: shrinks toward the ridge, and the lowest courses flare out
+    const flare = Math.pow(1 - t, 2.6) * 0.16;
+    const cw = w * (1 - t * 0.82) + w * flare;
+    const cd = d * (1 - t * 0.82) + d * flare;
+    const y = h * (t * t * 0.55 + t * 0.45);
+    const course = shadowed(new THREE.Mesh(new THREE.BoxGeometry(cw, h / courses * 1.35, cd), tileMat));
+    course.position.y = y;
+    g.add(course);
+  }
+  // ridge beam
+  const ridge = shadowed(new THREE.Mesh(new THREE.BoxGeometry(w * 0.24, h * 0.11, d * 0.24), trimMat));
+  ridge.position.y = h * 1.02;
+  g.add(ridge);
+  // four upturned corner horns
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const horn = new THREE.Mesh(
+      new THREE.TorusGeometry(w * 0.075, w * 0.016, 5, 10, Math.PI * 0.55),
+      trimMat);
+    horn.position.set(sx * w * 0.55, h * 0.10, sz * d * 0.55);
+    horn.rotation.set(0, Math.atan2(sx, sz), Math.PI * 0.5 - 0.5);
+    g.add(horn);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(w * 0.022, w * 0.10, 5), trimMat);
+    tip.position.set(sx * w * 0.60, h * 0.20, sz * d * 0.60);
+    tip.rotation.set(sz * 0.5, 0, -sx * 0.5);
+    g.add(tip);
+  }
+  return g;
+}
+
+// A colonnade hall: platform, red pillars, roof. opts.tiers stacks roofs.
+function makeHall(w, d, opts = {}) {
+  const g = new THREE.Group();
+  const pillarH = opts.pillarH || 7;
+  const plat = shadowed(new THREE.Mesh(
+    new THREE.BoxGeometry(w * 1.22, 1.4, d * 1.22),
+    STD({ color: opts.platform || 0xd8d2c2, roughness: 0.9 })));
+  plat.position.y = 0.7;
+  g.add(plat);
+  const step = shadowed(new THREE.Mesh(
+    new THREE.BoxGeometry(w * 1.38, 0.6, d * 1.38),
+    STD({ color: opts.platform || 0xd8d2c2, roughness: 0.95 })));
+  step.position.y = 0.3;
+  g.add(step);
+
+  const pillarMat = STD({ color: opts.pillar || C.cinnabar, roughness: 0.6 });
+  const nx = opts.nx || 4, nz = opts.nz || 3;
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    if (i > 0 && i < nx - 1 && j > 0 && j < nz - 1) continue;   // perimeter only
+    const p = shadowed(new THREE.Mesh(
+      new THREE.CylinderGeometry(w * 0.030, w * 0.033, pillarH, 10), pillarMat));
+    p.position.set(
+      -w / 2 + (i / (nx - 1)) * w,
+      1.4 + pillarH / 2,
+      -d / 2 + (j / (nz - 1)) * d);
+    g.add(p);
+  }
+  // architrave
+  const beam = shadowed(new THREE.Mesh(
+    new THREE.BoxGeometry(w * 1.08, 0.75, d * 1.08), STD({ color: C.darkGold, roughness: 0.5, metalness: 0.4 })));
+  beam.position.y = 1.4 + pillarH + 0.3;
+  g.add(beam);
+
+  const roof = makeRoof(w * 1.42, d * 1.42, opts.roofH || 5.5, { color: opts.roof || C.imperialY, trim: opts.trim || C.cinnabar });
+  roof.position.y = 1.4 + pillarH + 0.7;
+  g.add(roof);
+
+  if (opts.tiers && opts.tiers > 1) {
+    const roof2 = makeRoof(w * 1.02, d * 1.02, (opts.roofH || 5.5) * 0.8, { color: opts.roof || C.imperialY, trim: opts.trim || C.cinnabar });
+    roof2.position.y = 1.4 + pillarH + 0.7 + (opts.roofH || 5.5) * 0.95;
+    g.add(roof2);
+  }
+  g.userData.topY = 1.4 + pillarH + 0.7 + (opts.roofH || 5.5) * (opts.tiers > 1 ? 1.85 : 1.05);
+  return g;
+}
+
+// A flight of stone steps, used at 南天门 and up 灵山.
+function makeStairs(steps, width, rise, run, color = 0xcfc8b6) {
+  const g = new THREE.Group();
+  const mat = STD({ color, roughness: 0.95 });
+  for (let i = 0; i < steps; i++) {
+    const s = shadowed(new THREE.Mesh(new THREE.BoxGeometry(width, rise, run * (steps - i) + run), mat));
+    s.position.set(0, rise * (i + 0.5), -(run * (steps - i) + run) / 2 + run * 0.5);
+    g.add(s);
+  }
+  // balustrades
+  for (const sx of [-1, 1]) {
+    for (let i = 0; i < steps; i += 2) {
+      const post = shadowed(new THREE.Mesh(new THREE.BoxGeometry(width * 0.05, rise * 2.2, width * 0.05),
+        STD({ color: 0xe6e0d0, roughness: 0.9 })));
+      post.position.set(sx * width * 0.47, rise * (i + 1.6), -run * i);
+      g.add(post);
+    }
+  }
+  g.userData.topY = rise * steps;
+  g.userData.depth = run * steps;
+  return g;
+}
+
+// A hanging banner: cloth panel plus a pole. Colour bands stand in for text.
+function makeBanner(w, h, color, accent = C.gold) {
+  const g = new THREE.Group();
+  const cloth = shadowed(new THREE.Mesh(new THREE.PlaneGeometry(w, h, 1, 6),
+    STD({ color, roughness: 0.9, side: THREE.DoubleSide })));
+  cloth.position.y = -h / 2;
+  g.add(cloth);
+  for (let i = 0; i < 3; i++) {
+    const band = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.5, h * 0.06),
+      STD({ color: accent, side: THREE.DoubleSide, roughness: 0.6, metalness: 0.4 }));
+    band.position.set(0, -h * (0.22 + i * 0.24), 0.02);
+    g.add(band);
+  }
+  const rod = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(w * 0.03, w * 0.03, w * 1.15, 6),
+    STD({ color: C.darkGold, metalness: 0.7, roughness: 0.35 })));
+  rod.rotation.z = Math.PI / 2;
+  g.add(rod);
+  g.userData.cloth = cloth;
+  return g;
+}
+
+// ---------------------------------------------------------------------------
+//  A burst of sparks for impacts — pre-allocated, replayed by resetting t0.
+// ---------------------------------------------------------------------------
+function makeBurst(count, color, spread = 6, life = 1.2) {
+  const pos = new Float32Array(count * 3);
+  const vel = new Float32Array(count * 3);
+  const seed = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const dir = new THREE.Vector3(rand(-1, 1), rand(-0.2, 1), rand(-1, 1)).normalize().multiplyScalar(rand(0.35, 1) * spread);
+    vel[i * 3] = dir.x; vel[i * 3 + 1] = dir.y; vel[i * 3 + 2] = dir.z;
+    seed[i] = rnd();
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aVel', new THREE.BufferAttribute(vel, 3));
+  geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), spread * 3);
+  const uAge = { value: 99 };
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    uniforms: {
+      uAge, uLife: { value: life }, uColor: { value: new THREE.Color(color) },
+      uPix: { value: Math.min(window.devicePixelRatio, 2) },
+    },
+    vertexShader: `
+      attribute vec3 aVel; attribute float aSeed;
+      uniform float uAge, uLife, uPix;
+      varying float vA;
+      void main() {
+        float k = clamp(uAge / uLife, 0.0, 1.0);
+        vec3 p = aVel * (k * (2.0 - k)) * 3.0;
+        p.y -= 4.0 * k * k;
+        vA = (1.0 - k) * step(uAge, uLife);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_PointSize = min((2.0 + aSeed * 4.0) * uPix * (240.0 / max(-mv.z, 1.0)), 30.0 * uPix);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 uColor; varying float vA;
+      void main() {
+        float r = length(gl_PointCoord - 0.5);
+        float s = smoothstep(0.5, 0.0, r);
+        gl_FragColor = vec4(uColor, s * s * vA);
+        if (gl_FragColor.a < 0.01) discard;
+      }`,
+  });
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  return {
+    points,
+    // age is driven directly by the chapter clock so screenshots stay
+    // deterministic — no fire-and-forget timers anywhere in this file.
+    setAge: (a) => { uAge.value = a; },
+  };
+}
+
+
+// ============================================================================
+//  第一回 · 石猴出世 —— 花果山 · 水帘洞
+//  Birth of the Stone Monkey, on the Mountain of Flowers and Fruit.
+//
+//  The island is built as concentric terraces rather than a noise heightfield,
+//  because then the ground height is something I can state exactly:
+//  islandY() below is the single source of truth, and every tree, monkey and
+//  camera target is placed through it. Nothing on this island floats.
+// ============================================================================
+(function () {
+
+const TERRACES = [
+  { r: 96, y: 3.0 },
+  { r: 63, y: 15.0 },
+  { r: 41, y: 29.0 },
+  { r: 25, y: 43.0 },
+  { r: 12.5, y: 55.0 },
+];
+const SEA_Y = 0;
+
+function islandY(x, z) {
+  const d = Math.hypot(x, z);
+  for (let i = TERRACES.length - 1; i >= 0; i--) {
+    if (d <= TERRACES[i].r - 2.0) return TERRACES[i].y;
+  }
+  return -6;
+}
+
+// A terrace: flat top plus a rough rocky rim, so the silhouette is craggy but
+// the walkable surface is exactly TERRACES[i].y.
+function makeTerrace(r, top, height, seedOff) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(r, r * 1.12, height, 30, 1),
+    STD({ color: 0x6a6357, roughness: 1.0, flatShading: true }));
+  const pos = body.geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    if (Math.abs(y - height / 2) < 0.01) continue;         // keep the top flat
+    const a = Math.atan2(z, x);
+    const n = 1 + Math.sin(a * 6 + seedOff) * 0.045 + Math.sin(a * 13 + y * 0.2 + seedOff) * 0.028;
+    pos.setXYZ(i, x * n, y, z * n);
+  }
+  body.geometry.computeVertexNormals();
+  shadowed(body);
+  body.position.y = top - height / 2;
+  g.add(body);
+
+  // grass cap
+  const cap = new THREE.Mesh(
+    new THREE.CylinderGeometry(r, r, 0.55, 30, 1),
+    STD({ color: 0x4e7d3c, roughness: 1.0, flatShading: true }));
+  cap.position.y = top - 0.1;
+  shadowed(cap);
+  g.add(cap);
+
+  // boulders around the rim
+  for (let i = 0; i < 16; i++) {
+    const a = rand(0, TAU);
+    const rr = r * rand(0.86, 1.0);
+    const b = shadowed(new THREE.Mesh(
+      new THREE.DodecahedronGeometry(rand(1.2, 3.2), 0),
+      STD({ color: 0x6f6659, roughness: 1.0, flatShading: true })));
+    b.position.set(Math.cos(a) * rr, top - rand(0.2, 1.2), Math.sin(a) * rr);
+    b.rotation.set(rand(0, 3), rand(0, 3), rand(0, 3));
+    g.add(b);
+  }
+  return g;
+}
+
+registerChapter(1, {
+  title: { num: '第 一 回', cn: '石猴出世', en: 'Birth of the Stone Monkey' },
+  duration: 44,
+  sky: {
+    top: 0x1d3f79, mid: 0x7f92c0, bot: 0xf2b478, sun: 0xffd9a4,
+    sunDir: [-0.55, 0.28, 0.78], sunColor: 0xffd6a0, sunI: 2.5,
+    hemiSky: 0xa8bde8, hemiGround: 0x53603c, hemiI: 1.0,
+    fillColor: 0x86a0e0, fillI: 0.55,
+    glow: 1.3, stars: 0.07,
+    fog: { color: 0xa8b8d4, near: 180, far: 900 },
+    exposure: 1.2, sunTargetY: 30, shadowRadius: 120,
+  },
+  captions: [
+    { t: 0.5,  cn: '东胜神洲，海中有一座花果山', en: 'In the Eastern Sea stands the Mountain of Flowers and Fruit' },
+    { t: 10.5, cn: '山顶一块仙石，受日月精华，孕育多年', en: 'On its summit lay a stone, nursed by sun and moon' },
+    { t: 21.0, cn: '一日迸裂，产一石卵，化作石猴', en: 'One day it split, and from it came a stone monkey' },
+    { t: 30.0, cn: '目运两道金光，射冲斗府', en: 'From his eyes shot two beams of golden light' },
+    { t: 37.0, cn: '群猴拜为王，号「美猴王」', en: 'The monkeys hailed him king — the Handsome Monkey King' },
+  ],
+  cam: [
+    { t: 0,    p: [-40, 9, 330],  l: [0, 34, 0] },
+    { t: 10,   p: [-16, 14, 178], l: [0, 30, 0] },
+    { t: 17,   p: [13, 15, 116],  l: [0, 9, 71] },    // the water curtain and the cave behind it
+    { t: 24,   p: [26, 52, 86],   l: [0, 40, 10] },   // climbing the terraces
+    { t: 30,   p: [11, 64, 31],   l: [0, 58, 0] },    // summit, the stone
+    { t: 34,   p: [-8, 61, 20],   l: [0, 58.5, 0] },  // the new king, close
+    { t: 39,   p: [-27, 66, 48],  l: [0, 56, 0] },
+    { t: 44,   p: [-72, 92, 152], l: [0, 44, 0] },
+  ],
+  build() {
+    reseed(11071);
+    const g = new THREE.Group();
+
+    // ---- the sea ------------------------------------------------------
+    const sea = makeWater(1800, 150, 0x3a749e, 0.75, { roughness: 0.34, metalness: 0.42 });
+    sea.mesh.position.y = SEA_Y;
+    g.add(sea.mesh);
+
+    // ---- the island: five terraces ------------------------------------
+    for (let i = 0; i < TERRACES.length; i++) {
+      const T = TERRACES[i];
+      const prevY = i === 0 ? -12 : TERRACES[i - 1].y;
+      g.add(makeTerrace(T.r, T.y, T.y - prevY + 4, i * 3.7));
+    }
+
+    // crags on the summit — 花果山 is a peak, not a wedding cake
+    for (let i = 0; i < 7; i++) {
+      // keep the +Z sector clear: every camera in this chapter looks from there
+      const a = rand(Math.PI * 0.72, Math.PI * 1.28), rr = rand(9.5, 13);
+      const s = makeSpire(rand(1.8, 3.0), rand(6, 11), 0x6d6456, i * 2.1, rand(-0.12, 0.12));
+      s.position.set(Math.cos(a) * rr, TERRACES[4].y, Math.sin(a) * rr);
+      g.add(s);
+    }
+    for (let i = 0; i < 10; i++) {
+      const a = rand(-2.95, -1.7), rr = rand(28, 39);
+      const s = makeSpire(rand(2, 4), rand(7, 15), 0x746a5b, i * 1.3, rand(-0.15, 0.15));
+      s.position.set(Math.cos(a) * rr, TERRACES[2].y, Math.sin(a) * rr);
+      g.add(s);
+    }
+
+    // ---- the falls: one drop per terrace, all on the +Z face ----------
+    // The lowest drop pours over a rock buttress that juts clear of the
+    // terraces — the cave has to be cut into a face the camera can actually
+    // see, not into a slope that closes over it a few units further down.
+    const buttress = shadowed(new THREE.Mesh(new THREE.BoxGeometry(46, 16, 16),
+      STD({ color: 0x6c6457, roughness: 1.0, flatShading: true })));
+    {
+      const bp = buttress.geometry.attributes.position;
+      for (let i = 0; i < bp.count; i++) {
+        const x = bp.getX(i), y = bp.getY(i), z = bp.getZ(i);
+        if (z > 7.9) continue;                              // leave the front face flat
+        bp.setXYZ(i, x * rand(0.94, 1.06), y, z * rand(0.9, 1.05));
+      }
+      buttress.geometry.computeVertexNormals();
+    }
+    buttress.position.set(0, 7.6, 62);                      // front face at z = 70
+    g.add(buttress);
+    for (let i = 0; i < 14; i++) {                          // rubble at its foot
+      const b = shadowed(new THREE.Mesh(new THREE.DodecahedronGeometry(rand(1.6, 4.0), 0),
+        STD({ color: 0x6f6659, roughness: 1.0, flatShading: true })));
+      b.position.set(rand(-26, 26), rand(1.5, 3.5), rand(68, 78));
+      b.rotation.set(rand(0, 3), rand(0, 3), rand(0, 3));
+      g.add(b);
+    }
+
+    const falls = [];
+    const FALL_SPECS = [
+      { z: 25.8, yTop: 43.5, yBot: 28.5, w: 9 },
+      { z: 41.8, yTop: 29.5, yBot: 14.5, w: 12 },
+      { z: 71.8, yTop: 15.8, yBot: 1.0,  w: 17 },
+    ];
+    for (const f of FALL_SPECS) {
+      const h = f.yTop - f.yBot;
+      const wf = makeWaterfall(f.w, h, { color: 0xd8ecf7, opacity: 0.62 });
+      wf.group.position.set(0, (f.yTop + f.yBot) / 2, f.z);
+      wf.group.rotation.x = -0.06;
+      g.add(wf.group);
+      falls.push(wf);
+
+      // splash pool + mist at the foot of each drop
+      const pool = new THREE.Mesh(
+        new THREE.CircleGeometry(f.w * 0.85, 24),
+        STD({ color: 0x7fb6cf, roughness: 0.15, metalness: 0.4, transparent: true, opacity: 0.85 }));
+      pool.rotation.x = -Math.PI / 2;
+      pool.position.set(0, f.yBot + 0.35, f.z - 1.5);
+      g.add(pool);
+
+      const mist = makePointField(120, {
+        style: 'glow', area: new THREE.Vector3(f.w * 0.7, 8, 3.5),
+        origin: new THREE.Vector3(0, f.yBot, f.z - 1),
+        rise: 3.2, drift: 1.2, sizeMin: 2.5, sizeMax: 6.5,
+        colorA: 0xdfeef8, colorB: 0x9fc4dc,
+      });
+      mist.mat.blending = THREE.NormalBlending;
+      mist.mat.uniforms.uFade.value = 0.34;
+      g.add(mist.points);
+      falls.push(mist);
+    }
+
+    // ---- 水帘洞 — the cave behind the lowest fall ----------------------
+    const caveG = new THREE.Group();
+    caveG.position.set(0, 2.6, 70.1);         // flush with the buttress front face
+    // dark mouth
+    const mouthShape = new THREE.Shape();
+    mouthShape.moveTo(-5.2, 0);
+    mouthShape.lineTo(-5.2, 5.0);
+    mouthShape.quadraticCurveTo(0, 11.0, 5.2, 5.0);
+    mouthShape.lineTo(5.2, 0);
+    mouthShape.lineTo(-5.2, 0);
+    const mouth = new THREE.Mesh(new THREE.ShapeGeometry(mouthShape),
+      new THREE.MeshBasicMaterial({ color: 0x0a0d14 }));
+    mouth.position.z = 0.05;
+    caveG.add(mouth);
+    // rock surround, built as chunks around the arch so the opening reads as
+    // carved into the cliff rather than painted on it
+    for (let i = 0; i < 22; i++) {
+      const a = Math.PI * (0.02 + 0.96 * (i / 21));
+      const rr = 6.6 + rand(-0.3, 0.9);
+      const chunk = shadowed(new THREE.Mesh(
+        new THREE.DodecahedronGeometry(rand(1.3, 2.4), 0),
+        STD({ color: 0x5e564a, roughness: 1.0, flatShading: true })));
+      chunk.position.set(Math.cos(a) * rr, Math.sin(a) * rr * 0.95, rand(0.2, 1.2));
+      chunk.rotation.set(rand(0, 3), rand(0, 3), rand(0, 3));
+      caveG.add(chunk);
+    }
+    const caveGlow = new THREE.PointLight(0xffb367, 0, 40, 2);
+    caveGlow.position.set(0, 5, -2.5);
+    caveG.add(caveGlow);
+    g.add(caveG);
+
+    // 石碣 — the stone tablet beside the cave: 「花果山福地，水帘洞洞天」
+    const tablet = shadowed(new THREE.Mesh(new THREE.BoxGeometry(3.2, 6.4, 0.6),
+      STD({ color: 0x8d8577, roughness: 0.95 })));
+    tablet.position.set(15.5, 6.0, 70.3);
+    tablet.rotation.y = -0.35;
+    g.add(tablet);
+    for (let i = 0; i < 5; i++) {
+      const glyph = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.16, 0.1),
+        STD({ color: 0x3a3128, roughness: 0.9 }));
+      glyph.position.set(15.35, 8.2 - i * 0.95, 70.62);
+      glyph.rotation.y = -0.35;
+      g.add(glyph);
+    }
+
+    // ---- vegetation ----------------------------------------------------
+    for (let i = 0; i < 46; i++) {
+      const ti = randi(0, 2);
+      const T = TERRACES[ti];
+      const a = rand(0, TAU);
+      const rr = rand(ti === 0 ? 42 : 8, T.r - 5);
+      const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+      if (Math.abs(x) < 14 && z > 0) continue;             // keep the falls clear
+      const tree = makeTreeSimple(rand(1.5, 2.6), 0x5b4227, pick([0x3f7a36, 0x4a8a3c, 0x35682e]), chance(0.55));
+      tree.position.set(x, islandY(x, z) - 0.2, z);
+      tree.rotation.y = rand(0, TAU);
+      g.add(tree);
+    }
+    // 蟠桃 — peaches, since this is the Mountain of Flowers and *Fruit*
+    for (let i = 0; i < 60; i++) {
+      const a = rand(0, TAU), rr = rand(20, 88);
+      const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+      const y = islandY(x, z);
+      if (y < 0) continue;
+      const bush = shadowed(new THREE.Mesh(new THREE.SphereGeometry(rand(0.8, 1.8), 7, 6),
+        STD({ color: 0x39702f, roughness: 1.0, flatShading: true })));
+      bush.position.set(x, y + 0.6, z);
+      bush.scale.y = 0.7;
+      g.add(bush);
+    }
+
+    // ---- the summit stone 仙石 and its egg -----------------------------
+    const summitY = TERRACES[4].y;
+    const pedestal = shadowed(new THREE.Mesh(
+      new THREE.CylinderGeometry(5.2, 6.4, 2.4, 12),
+      STD({ color: 0x7d7565, roughness: 1.0, flatShading: true })));
+    pedestal.position.set(0, summitY + 1.2, 0);
+    g.add(pedestal);
+
+    const eggMat = STD({
+      color: 0xbdb4a0, roughness: 0.72,
+      emissive: 0x6a4a12, emissiveIntensity: 0.0, flatShading: true,
+    });
+    const eggTop = shadowed(new THREE.Mesh(
+      new THREE.SphereGeometry(3.6, 20, 14, 0, TAU, 0, Math.PI / 2), eggMat));
+    const eggBot = shadowed(new THREE.Mesh(
+      new THREE.SphereGeometry(3.6, 20, 14, 0, TAU, Math.PI / 2, Math.PI / 2), eggMat));
+    eggTop.scale.y = 1.35; eggBot.scale.y = 1.35;
+    const eggG = new THREE.Group();
+    eggG.position.set(0, summitY + 2.4 + 3.6 * 1.35 * 0.75, 0);
+    eggG.add(eggTop); eggG.add(eggBot);
+    g.add(eggG);
+
+    const eggLight = new THREE.PointLight(0xffd27a, 0, 90, 2);
+    eggLight.position.copy(eggG.position);
+    g.add(eggLight);
+
+    const halo = makeHalo(0xffe0a0, 4, 20, 0.55);
+    halo.group.position.copy(eggG.position);
+    halo.group.position.y = summitY + 0.4;
+    halo.group.visible = false;
+    g.add(halo.group);
+
+    const rays = makeGodRays(9, 78, 0xffd591, 0.0, 8);
+    rays.group.position.set(0, summitY + 34, 0);
+    g.add(rays.group);
+
+    const burst = makeBurst(220, 0xffe2a8, 9, 1.8);
+    burst.points.position.copy(eggG.position);
+    g.add(burst.points);
+
+    // ---- 石猴 — the stone monkey himself -------------------------------
+    const wukong = makeWukong(4.6);
+    wukong.position.set(0, summitY + 2.4, 0);
+    wukong.rotation.y = Math.PI * 0.92;
+    wukong.visible = false;
+    // he is stone before he is flesh: start pale, warm up after the hatch
+    wukong.traverse((o) => {
+      if (o.isMesh && o.material && o.material.color) {
+        o.userData.warmColor = o.material.color.clone();
+        o.material = o.material.clone();
+        o.material.color.lerp(new THREE.Color(0xa9a396), 0.85);
+      }
+    });
+    g.add(wukong);
+    const eyeBeamMat = new THREE.MeshBasicMaterial({
+      color: 0xffdc7a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+    const beams = [];
+    for (const sx of [-1, 1]) {
+      // Cones are centred on their own origin, so half would shoot backwards
+      // through his skull. Shift the geometry to start at the eye, then parent
+      // it to the head — he turns during this beat and the light must turn too.
+      const beamGeo = new THREE.CylinderGeometry(0.09, 0.55, 30, 8, 1, true);
+      beamGeo.translate(0, 15, 0);
+      const beam = new THREE.Mesh(beamGeo, eyeBeamMat);
+      beam.position.set(sx * 4.6 * 0.038, 4.6 * 0.012, 4.6 * 0.10);
+      beam.rotation.x = Math.PI * 0.5 - 0.28;      // forward, tilted slightly up
+      beam.visible = false;
+      wukong.userData.rig.head.add(beam);
+      beams.push(beam);
+    }
+
+    // ---- the tribe ------------------------------------------------------
+    const monkeys = [];
+    for (let i = 0; i < 24; i++) {
+      const ti = i < 9 ? 4 : randi(2, 3);       // a third of them up on the summit
+      const T = TERRACES[ti];
+      const a = rand(0, TAU), rr = ti === 4 ? rand(8.5, 11.5) : rand(6, T.r - 4);
+      const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+      const m = makeMonkeySmall(rand(1.9, 2.9));
+      m.position.set(x, islandY(x, z), z);
+      m.userData.baseRotY = Math.atan2(-x, -z);
+      m.rotation.y = m.userData.baseRotY;
+      m.userData.hopBase = m.position.y;
+      g.add(m);
+      monkeys.push(m);
+    }
+
+    // ---- atmosphere -----------------------------------------------------
+    const seaMist = makeCloudSea(22, 300, 3, { scale: 2.2, color: 0xdfe6ef, emissive: 0x2c3550, minR: 150, opacity: 0.55 });
+    g.add(seaMist.group);
+    const petals = makePointField(140, {
+      style: 'petal', area: new THREE.Vector3(70, 42, 70), origin: new THREE.Vector3(0, 8, 0),
+      rise: -2.6, drift: 3.0, sizeMin: 1.6, sizeMax: 3.6,
+      colorA: 0xf7c2d4, colorB: 0xffe6ec,
+    });
+    g.add(petals.points);
+    const motes = makePointField(150, {
+      style: 'glow', area: new THREE.Vector3(60, 45, 60), origin: new THREE.Vector3(0, 10, 0),
+      rise: 2.2, drift: 2.4, sizeMin: 1.2, sizeMax: 2.8,
+      colorA: 0xffe1a8, colorB: 0xfff6de,
+    });
+    g.add(motes.points);
+
+    this._ = {
+      g, sea, falls, halo, rays, burst, eggG, eggTop, eggBot, eggMat, eggLight,
+      wukong, beams, eyeBeamMat, monkeys, seaMist, petals, motes, summitY, caveGlow, cave: caveG,
+    };
+    return g;
+  },
+
+  update(t, dt) {
+    const S = this._;
+    S.sea.update(t);
+    for (const f of S.falls) f.update(t);
+    S.seaMist.update(t);
+    S.petals.update(t);
+    S.motes.update(t);
+
+    // the stone glows harder the closer it gets to splitting
+    const charge = pulse(t, 8, 25.5);
+    S.eggMat.emissiveIntensity = charge * 1.9 + Math.sin(t * 3.1) * 0.12 * charge;
+    S.eggLight.intensity = charge * 22;
+    S.caveGlow.intensity = 4 + Math.sin(t * 1.7) * 1.2;
+
+    // 25.5s: 石破天惊
+    const crack = pulse(t, 25.5, 28.5);
+    if (crack > 0) {
+      const k = easeOut(crack);
+      S.eggTop.position.y = k * 9.5;
+      S.eggTop.rotation.z = k * 1.15;
+      S.eggTop.position.x = k * 3.2;
+      S.eggBot.position.y = -k * 1.2;
+      S.eggBot.rotation.z = -k * 0.5;
+      S.eggBot.position.x = -k * 2.6;
+      S.eggMat.opacity = 1;
+      S.eggG.visible = crack < 0.985;
+      S.eggLight.intensity = 22 + 120 * Math.exp(-Math.pow((t - 26.0) * 1.6, 2));
+      S.halo.group.visible = true;
+      S.halo.update(t - 25.5, 0.55, 1 - crack * 0.35);
+      S.burst.setAge(t - 25.6);
+      S.rays.mat.uniforms.uOpacity.value = 0.30 * Math.exp(-Math.pow((t - 27.0) * 0.34, 2));
+    } else {
+      S.eggG.visible = true;
+      S.rays.mat.uniforms.uOpacity.value = 0.05 * charge;
+      S.burst.setAge(99);
+    }
+    S.rays.update(t);
+    S.rays.group.rotation.y = t * 0.06;
+
+    // the monkey rises out of the broken stone
+    const born = pulse(t, 26.6, 30.0);
+    if (born > 0) {
+      S.wukong.visible = true;
+      const k = easeOut(born);
+      S.wukong.position.y = S.summitY + 2.4 + (1 - k) * -3.0;
+      S.wukong.scale.setScalar(0.55 + 0.45 * k);
+      // stone turns to flesh
+      S.wukong.traverse((o) => {
+        if (o.isMesh && o.userData.warmColor) {
+          o.material.color.copy(new THREE.Color(0xa9a396)).lerp(o.userData.warmColor, k);
+        }
+      });
+      if (t > 29.5) {
+        walk(S.wukong, t, 0.0, 0);
+        idle(S.wukong, t, 1);
+        S.wukong.userData.rig.staff.rotation.z = Math.PI / 2 + Math.sin(t * 1.2) * 0.25;
+      }
+      S.wukong.rotation.y = Math.PI * 0.92 + (t - 26.6) * 0.28;
+    } else {
+      S.wukong.visible = false;
+    }
+
+    // 目运两道金光 — the twin beams from his eyes, once, at 31s
+    const beam = Math.exp(-Math.pow((t - 32.0) * 0.55, 2));
+    S.eyeBeamMat.opacity = beam * 0.6;
+    for (const b of S.beams) b.visible = beam > 0.02 && S.wukong.visible;
+
+    // the tribe: idle, then jubilant once the king is born
+    const joy = pulse(t, 30, 34);
+    for (let i = 0; i < S.monkeys.length; i++) {
+      const m = S.monkeys[i];
+      monkeyIdle(m, t);
+      if (joy > 0) {
+        const hop = Math.abs(Math.sin(t * 4.2 + i * 0.7));
+        m.position.y = m.userData.hopBase + hop * 1.5 * joy;
+        m.rotation.y = m.userData.baseRotY + Math.sin(t * 3 + i) * 0.4 * joy;
+      }
+    }
+  },
+});
+
+})();
+
+
+// ============================================================================
+//  第二回 · 大闹天宫 —— 南天门 · 蟠桃园 · 凌霄殿
+//  Havoc in Heaven. Gold and cinnabar on a floor of cloud.
+//
+//  Everything stands on a jade terrace at y = 0 with the cloud sea below it, so
+//  "the ground" is again one number rather than a surface to guess at.
+// ============================================================================
+(function () {
+
+const DECK_Y = 0;
+const DECK_R = 46;
+
+registerChapter(2, {
+  title: { num: '第 二 回', cn: '大闹天宫', en: 'Havoc in the Palace of Heaven' },
+  duration: 46,
+  sky: {
+    top: 0x2f4f96, mid: 0x9fb6e2, bot: 0xf6e2b4, sun: 0xfff0c8,
+    sunDir: [0.35, 0.52, -0.78], sunColor: 0xfff2d2, sunI: 2.7,
+    hemiSky: 0xd8e4ff, hemiGround: 0x8a7a52, hemiI: 1.15,
+    fillColor: 0xffd9a0, fillI: 0.6,
+    glow: 1.1, stars: 0,
+    fog: { color: 0xd8e2f4, near: 120, far: 700 },
+    exposure: 1.08, sunTargetY: 12, shadowRadius: 90,
+  },
+  captions: [
+    { t: 0.5,  cn: '云宫琼阁，天上一日，世上千年', en: 'A day in the cloud palace is a thousand years below' },
+    { t: 9.0,  cn: '官封弼马，心何足；名注齐天，意未宁', en: 'Made a stablemaster, he would not rest' },
+    { t: 17.0, cn: '偷吃蟠桃，搅乱蟠桃盛会', en: 'He ate the immortal peaches and wrecked the feast' },
+    { t: 26.0, cn: '十万天兵天将，围之不住', en: 'A hundred thousand celestial troops could not hold him' },
+    { t: 36.0, cn: '「齐天大圣」——闹得天宫无宁日', en: 'Great Sage Equal to Heaven' },
+  ],
+  cam: [
+    { t: 0,  p: [0, -22, 58],   l: [0, 4, -12] },    // rising out of the cloud sea
+    { t: 9,  p: [3, 3, 24],     l: [0, 15, -34] },   // looking up at the gate of heaven
+    { t: 17, p: [45, 8, 24],    l: [34, 4.5, 9] },   // the peach garden
+    { t: 25, p: [15, 6, 19],    l: [0, 4, 6] },      // the ranks close in
+    { t: 31, p: [-9, 5, 16],    l: [0, 5, 6] },      // the cudgel swings
+    { t: 37, p: [-7, 13, 29],   l: [0, 8, 0] },
+    { t: 46, p: [-27, 36, 78],  l: [0, 10, -18] },   // pull back over the ruin
+  ],
+  build() {
+    reseed(20482);
+    const g = new THREE.Group();
+
+    // ---- cloud floor ---------------------------------------------------
+    const seaLow = makeCloudSea(46, 340, -16, { scale: 2.6, color: 0xf6f4ee, emissive: 0x5a6ea8, minR: 40 });
+    g.add(seaLow.group);
+    const seaFar = makeCloudSea(26, 620, -34, { scale: 5.0, color: 0xeef0f6, emissive: 0x4a5c92, minR: 330, opacity: 0.75 });
+    g.add(seaFar.group);
+
+    // ---- the jade terrace ----------------------------------------------
+    const deck = shadowed(new THREE.Mesh(
+      new THREE.CylinderGeometry(DECK_R, DECK_R * 0.94, 3.0, 56),
+      STD({ color: 0xe4e0d2, roughness: 0.65, metalness: 0.06 })));
+    deck.position.y = DECK_Y - 1.5;
+    g.add(deck);
+    const inlay = new THREE.Mesh(
+      new THREE.RingGeometry(DECK_R * 0.52, DECK_R * 0.60, 56),
+      STD({ color: C.darkGold, roughness: 0.4, metalness: 0.6, side: THREE.DoubleSide }));
+    inlay.rotation.x = -Math.PI / 2;
+    inlay.position.y = DECK_Y + 0.03;
+    g.add(inlay);
+    // balustrade: posts plus one continuous ring, not 56 loose crossbars
+    for (let i = 0; i < 40; i++) {
+      const a = (i / 40) * TAU;
+      if (a > Math.PI * 0.80 && a < Math.PI * 1.20) continue;    // opening toward the gate
+      const post = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.4, 0.5),
+        STD({ color: 0xf0ece0, roughness: 0.8 })));
+      post.position.set(Math.cos(a) * (DECK_R - 1.2), DECK_Y + 1.2, Math.sin(a) * (DECK_R - 1.2));
+      post.rotation.y = -a;
+      g.add(post);
+    }
+    const rail = shadowed(new THREE.Mesh(
+      new THREE.TorusGeometry(DECK_R - 1.2, 0.22, 6, 72, Math.PI * 1.6),
+      STD({ color: 0xf0ece0, roughness: 0.8 })));
+    rail.rotation.x = Math.PI / 2;
+    rail.rotation.z = -Math.PI * 0.30;
+    rail.position.y = DECK_Y + 2.2;
+    g.add(rail);
+
+    // ---- 南天门 — the South Gate of Heaven -----------------------------
+    const gate = new THREE.Group();
+    gate.position.set(0, DECK_Y, -34);
+    for (const sx of [-1, 1]) {
+      const tower = new THREE.Group();
+      tower.position.x = sx * 11;
+      const base = shadowed(new THREE.Mesh(new THREE.BoxGeometry(9, 3, 9),
+        STD({ color: 0xe8e2d2, roughness: 0.85 })));
+      base.position.y = 1.5;
+      tower.add(base);
+      for (const px of [-1, 1]) for (const pz of [-1, 1]) {
+        const p = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.78, 11, 10),
+          STD({ color: C.cinnabar, roughness: 0.55 })));
+        p.position.set(px * 3.2, 8.5, pz * 3.2);
+        tower.add(p);
+      }
+      const lintel = shadowed(new THREE.Mesh(new THREE.BoxGeometry(9.4, 1.5, 9.4),
+        STD({ color: C.darkGold, roughness: 0.4, metalness: 0.5 })));
+      lintel.position.y = 14.6;
+      tower.add(lintel);
+      const roof = makeRoof(12, 12, 6.5, {});
+      roof.position.y = 15.4;
+      tower.add(roof);
+      gate.add(tower);
+    }
+    // the span over the road, and its plaque
+    const span = shadowed(new THREE.Mesh(new THREE.BoxGeometry(23, 2.2, 5),
+      STD({ color: C.darkGold, roughness: 0.4, metalness: 0.55 })));
+    span.position.y = 15.8;
+    gate.add(span);
+    const plaque = shadowed(new THREE.Mesh(new THREE.BoxGeometry(7.6, 3.0, 0.6),
+      STD({ color: 0x2b2f3a, roughness: 0.6 })));
+    plaque.position.set(0, 18.6, 2.6);
+    gate.add(plaque);
+    for (let i = 0; i < 3; i++) {
+      const glyph = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.28, 0.12),
+        STD({ color: C.gold, metalness: 0.7, roughness: 0.3, emissive: 0x2a2004, emissiveIntensity: 0.7 }));
+      glyph.position.set((i - 1) * 2.1, 18.6, 2.95);
+      gate.add(glyph);
+    }
+    const spanRoof = makeRoof(26, 8, 6.0, {});
+    spanRoof.position.y = 17.0;
+    gate.add(spanRoof);
+    g.add(gate);
+
+    // ---- 凌霄殿 — the throne hall, further back and higher --------------
+    const hallPlat = shadowed(new THREE.Mesh(
+      new THREE.CylinderGeometry(30, 33, 8, 40),
+      STD({ color: 0xe6e0cf, roughness: 0.8 })));
+    hallPlat.position.set(0, DECK_Y + 4, -86);
+    g.add(hallPlat);
+    const hall = makeHall(24, 17, { pillarH: 9, roofH: 7, tiers: 2, nx: 5, nz: 4 });
+    hall.position.set(0, DECK_Y + 8, -86);
+    g.add(hall);
+    const hallStairs = makeStairs(14, 16, 0.6, 1.5);
+    hallStairs.position.set(0, DECK_Y, -66);
+    hallStairs.rotation.y = Math.PI;
+    g.add(hallStairs);
+    // side pavilions floating on their own cloud islets
+    for (const sx of [-1, 1]) {
+      const pav = makeHall(10, 8, { pillarH: 5.5, roofH: 4, nx: 3, nz: 3 });
+      pav.position.set(sx * 48, DECK_Y + 10, -58);
+      g.add(pav);
+      const isle = makeCloudPuff(7, 0xf2f0e8, 0x4a5a90);
+      isle.position.set(sx * 48, DECK_Y + 7, -58);
+      g.add(isle);
+    }
+
+    // ---- 蟠桃园 — the peach garden on the east side --------------------
+    const orchard = new THREE.Group();
+    orchard.position.set(30, DECK_Y, 2);
+    const peachDeck = shadowed(new THREE.Mesh(
+      new THREE.CylinderGeometry(15, 16, 1.6, 28),
+      STD({ color: 0xd9e6c8, roughness: 0.95 })));
+    peachDeck.position.y = 0.4;
+    orchard.add(peachDeck);
+    const peaches = [];
+    for (let i = 0; i < 8; i++) {
+      const a = -1.9 + (i / 7) * 4.6, rr = rand(6, 12);   // arc, open toward the camera
+      const tree = makeTreeSimple(rand(1.05, 1.5), 0x6b4a2a, 0x3f7f3c, true);
+      tree.position.set(Math.cos(a) * rr, 1.2, Math.sin(a) * rr);
+      orchard.add(tree);
+      for (let k = 0; k < 4; k++) {
+        const peach = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.42, 9, 8),
+          STD({ color: 0xf2b3a0, roughness: 0.7, emissive: 0x3a1410, emissiveIntensity: 0.35 })));
+        const c = tree.userData.canopy[randi(0, 2)];
+        peach.position.copy(tree.position).add(c.position)
+          .add(new THREE.Vector3(rand(-1.3, 1.3), rand(-1.1, 0.2), rand(-1.3, 1.3)));
+        orchard.add(peach);
+        peaches.push(peach);
+      }
+    }
+    // a table of the wrecked feast
+    for (let i = 0; i < 3; i++) {
+      const tbl = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 0.24, 14),
+        STD({ color: C.cinnabar, roughness: 0.6 })));
+      tbl.position.set(rand(-9, 9), 2.3, rand(-9, 9));
+      tbl.rotation.set(rand(0.9, 1.5), rand(0, 3), rand(-0.4, 0.4));   // overturned
+      orchard.add(tbl);
+      for (let L = 0; L < 3; L++) {
+        const leg = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.5, 6),
+          STD({ color: 0x7a3a24, roughness: 0.8 })));
+        const la = (L / 3) * TAU;
+        leg.position.set(Math.cos(la) * 1.3, 0.85, Math.sin(la) * 1.3);
+        tbl.add(leg);
+      }
+      for (let k = 0; k < 3; k++) {
+        const bowl = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.4, 9, 6, 0, TAU, 0, Math.PI / 2),
+          STD({ color: C.gold, metalness: 0.8, roughness: 0.3 })));
+        bowl.position.set(tbl.position.x + rand(-2.5, 2.5), 1.6, tbl.position.z + rand(-2.5, 2.5));
+        bowl.rotation.z = rand(-2, 2);
+        orchard.add(bowl);
+      }
+    }
+    g.add(orchard);
+
+    // ---- banners along the terrace -------------------------------------
+    const banners = [];
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI * 0.42 + (i / 9) * Math.PI * 1.84;
+      const pole = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 13, 8),
+        STD({ color: 0x6b4b28, roughness: 0.8 })));
+      const px = Math.cos(a) * (DECK_R - 6), pz = Math.sin(a) * (DECK_R - 6);
+      pole.position.set(px, DECK_Y + 6.5, pz);
+      g.add(pole);
+      const ban = makeBanner(3.0, 7.0, pick([C.cinnabar, C.imperialY, 0x2f5aa8]));
+      ban.position.set(px, DECK_Y + 12.4, pz);
+      ban.rotation.y = -a;
+      g.add(ban);
+      banners.push(ban);
+    }
+
+    // ---- 齐天大圣 and the celestial ranks -------------------------------
+    const wukong = makeWukong(4.6);
+    wukong.position.set(0, DECK_Y, 6);
+    g.add(wukong);
+    const staffPivot = wukong.userData.rig.staff;
+
+    const cloudUnder = makeCloudPuff(2.2, 0xfaf8f0, 0x6a7ab0);
+    cloudUnder.position.set(0, DECK_Y + 0.4, 6);
+    cloudUnder.visible = false;
+    g.add(cloudUnder);
+
+    const soldiers = [];
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * TAU;
+      const s = makeSoldier(3.6, i % 2 ? C.cinnabar : 0x2f5aa8);
+      const r0 = rand(15, 23);
+      s.position.set(Math.cos(a) * r0, DECK_Y, 6 + Math.sin(a) * r0);
+      s.rotation.y = Math.atan2(-Math.cos(a), -Math.sin(a));
+      g.add(s);
+      soldiers.push({ s, a, r0, phase: rand(0, TAU), tumble: new THREE.Vector3(rand(-1, 1), rand(0.4, 1), rand(-1, 1)) });
+    }
+
+    // what the routed ranks left behind — an empty terrace reads as "nothing
+    // happened here", which is the opposite of the point of this chapter
+    const debris = [];
+    for (let i = 0; i < 16; i++) {
+      const a = rand(0, TAU), rr = rand(11, 34);
+      const px = Math.cos(a) * rr, pz = 6 + Math.sin(a) * rr;
+      if (chance(0.55)) {
+        const spear = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, rand(4, 5.4), 6),
+          STD({ color: 0x5d4326, roughness: 0.85 })));
+        spear.position.set(px, DECK_Y + 0.12, pz);
+        spear.rotation.set(Math.PI / 2, 0, rand(0, TAU));
+        g.add(spear);
+        debris.push(spear);
+      } else {
+        const helm = shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.62, 0.78, 9),
+          STD({ color: C.darkGold, metalness: 0.8, roughness: 0.35 })));
+        helm.position.set(px, DECK_Y + 0.3, pz);
+        helm.rotation.set(rand(1.2, 2.0), rand(0, TAU), rand(-0.5, 0.5));
+        g.add(helm);
+        debris.push(helm);
+      }
+    }
+
+    const bursts = [];
+    for (let i = 0; i < 3; i++) {
+      const b = makeBurst(180, 0xffe9a8, 12, 1.6);
+      b.points.position.set(0, DECK_Y + 3, 6);
+      g.add(b.points);
+      bursts.push(b);
+    }
+    const shock = makeHalo(0xfff0bc, 3, 26, 0.42);
+    shock.group.position.set(0, DECK_Y + 0.6, 6);
+    shock.group.visible = false;
+    g.add(shock.group);
+
+    const sparks = makePointField(150, {
+      style: 'ember', area: new THREE.Vector3(40, 26, 40), origin: new THREE.Vector3(0, DECK_Y, 4),
+      rise: 5.5, drift: 3.0, sizeMin: 0.9, sizeMax: 2.1,
+      colorA: 0xffe9a8, colorB: 0xffb03a,
+    });
+    g.add(sparks.points);
+
+    const drift = makePointField(70, {
+      style: 'petal', area: new THREE.Vector3(70, 40, 70), origin: new THREE.Vector3(0, DECK_Y - 4, 0),
+      rise: -1.8, drift: 2.6, sizeMin: 1.1, sizeMax: 2.2,
+      colorA: 0xffd9e2, colorB: 0xfff3d0,
+    });
+    drift.setFade(0.5);
+    g.add(drift.points);
+
+    this._ = { g, seaLow, seaFar, wukong, staffPivot, soldiers, bursts, shock, sparks, drift, banners, peaches, cloudUnder, debris };
+    return g;
+  },
+
+  update(t, dt) {
+    const S = this._;
+    S.seaLow.update(t);
+    S.seaFar.update(t);
+    S.sparks.update(t);
+    S.drift.update(t);
+    for (const b of S.banners) b.rotation.z = Math.sin(t * 1.4 + b.position.x) * 0.06;
+    // the wreckage only exists once the ranks have actually been broken
+    for (const d of S.debris) d.visible = t > 30.2;
+
+    const rig = S.wukong.userData.rig;
+
+    // --- beat 1: he is in the orchard, helping himself to the peaches ---
+    if (t < 21) {
+      // stands at the near edge of the orchard, in the open, reaching for fruit
+      S.wukong.position.set(34.5, 0, 9.5);
+      S.wukong.rotation.y = 2.5 + Math.sin(t * 0.5) * 0.25;
+      idle(S.wukong, t, 0.8);
+      rig.staff.rotation.z = Math.PI / 2 + Math.sin(t * 0.8) * 0.15;
+      rig.armL.root.rotation.x = -1.9 + Math.sin(t * 2.2) * 0.45;   // reaching up for fruit
+      rig.armL.lower.rotation.x = -0.5;
+      S.shock.group.visible = false;
+      for (const b of S.bursts) b.setAge(99);
+    } else {
+      // --- beat 2: he plants himself on the terrace and the ranks close in
+      const k = pulse(t, 21, 24);
+      S.wukong.position.set(lerp(30, 0, ease(k)), 0, lerp(2, 6, ease(k)));
+      S.wukong.rotation.y = lerp(t * 0.4 + Math.PI, 0.3, ease(k));
+      if (t < 26) {
+        walk(S.wukong, t, 1.3, 1.0);
+      } else {
+        // the cudgel: spun overhead, growing as it goes
+        idle(S.wukong, t, 0.6);
+        const spin = (t - 26) * 7.5;
+        rig.armR.root.rotation.x = -2.1;
+        rig.armR.lower.rotation.x = 0.2;
+        rig.staff.rotation.z = spin;
+        rig.staff.rotation.y = Math.sin(spin * 0.5) * 0.4;
+        const grow = 1 + pulse(t, 30, 36) * 3.4;
+        rig.staff.scale.y = grow;
+        rig.lockArmR = true;
+      }
+    }
+
+    // --- the celestial ranks: charge, then get swept off the terrace -----
+    const impact = 29.5;
+    for (let i = 0; i < S.soldiers.length; i++) {
+      const d = S.soldiers[i];
+      if (t < impact) {
+        const close = pulse(t, 24, impact);
+        const r = lerp(d.r0, 9.5, ease(close));
+        d.s.position.set(Math.cos(d.a) * r, 0, 6 + Math.sin(d.a) * r);
+        d.s.rotation.set(0, Math.atan2(-Math.cos(d.a), -Math.sin(d.a)), 0);
+        walk(d.s, t + d.phase, close > 0.02 ? 1.5 : 0.0, close > 0.02 ? 1.0 : 0.0);
+        if (close < 0.02) idle(d.s, t + d.phase, 0.7);
+      } else {
+        // blown outward and tumbling — and then genuinely gone, not stuck
+        // hovering at the terrace edge
+        const k = Math.min((t - impact) * 0.55, 3.2);
+        const r = 9.5 + k * 26;
+        d.s.position.set(
+          Math.cos(d.a) * r,
+          Math.max(-70, 6 * Math.sin(Math.min(k, 1.6) * 1.9) - k * k * 3.4),
+          6 + Math.sin(d.a) * r);
+        d.s.rotation.set(
+          d.tumble.x * k * 2.4,
+          Math.atan2(-Math.cos(d.a), -Math.sin(d.a)) + d.tumble.y * k * 2.0,
+          d.tumble.z * k * 2.6);
+        walk(d.s, t + d.phase, 0.6, 0.4);
+      }
+    }
+
+    // --- impact flash -----------------------------------------------------
+    if (t >= impact - 0.2) {
+      S.shock.group.visible = true;
+      S.shock.update(t - impact, 0.5, Math.exp(-(t - impact) * 0.5));
+      for (let i = 0; i < S.bursts.length; i++) S.bursts[i].setAge(t - impact - i * 0.28);
+    }
+    S.sparks.setFade(0.25 + 0.75 * pulse(t, 26, 30));
+
+    // the peaches he did not eat sway; the ones he did are long gone
+    for (let i = 0; i < S.peaches.length; i++) {
+      S.peaches[i].visible = !(t > 14 && i % 3 === 0);
+    }
+  },
+});
+
+})();
+
+
+// ============================================================================
+//  第三回 · 五行山下 —— 五百年 · 揭帖 · 收徒
+//  Five hundred years under the Mountain of Five Elements, and the monk who
+//  peels the seal off it.
+//
+//  This chapter drives the sun and sky itself during the time-lapse. The
+//  director sets them once on entry; everything here is computed as an absolute
+//  function of local time, so any frame is still reproducible on demand.
+// ============================================================================
+(function () {
+
+const PEAKS = [
+  { a: -0.68, r: 12, h: 42, w: 7.0 },
+  { a: -0.30, r: 9,  h: 54, w: 7.6 },
+  { a: 0.04,  r: 6,  h: 62, w: 8.4 },
+  { a: 0.38,  r: 10, h: 50, w: 7.2 },
+  { a: 0.76,  r: 14, h: 39, w: 6.4 },
+];
+const TRAP_Z = 26;        // where he is pinned, on the +Z face of the mountain
+
+// The road bends, then straightens onto the mountain's face so the arrival
+// beat has both figures near the same spot instead of 17 units apart.
+function roadX(z) {
+  return (Math.sin(z * 0.021) * 16 + Math.sin(z * 0.006) * 9) * smooth(z, 36, 96);
+}
+
+function groundY(x, z) {
+  const d = Math.hypot(x, z);
+  return Math.sin(x * 0.012) * Math.cos(z * 0.010) * 3.4
+       + Math.sin(x * 0.031 + z * 0.024) * 1.2
+       - Math.max(0, 1 - d / 110) * 2.0;
+}
+
+registerChapter(3, {
+  title: { num: '第 三 回', cn: '五行山下', en: 'Five Hundred Years Under the Mountain' },
+  duration: 42,
+  sky: {
+    top: 0x24406e, mid: 0x8494b4, bot: 0xd8bc92, sun: 0xffe2b4,
+    sunDir: [0.62, 0.42, 0.66], sunColor: 0xffe6bc, sunI: 2.2,
+    hemiSky: 0xa8bcd8, hemiGround: 0x5d5a3e, hemiI: 0.95,
+    fillColor: 0x93a6cc, fillI: 0.4,
+    glow: 1.0, stars: 0,
+    fog: { color: 0xb8c2d0, near: 150, far: 800 },
+    exposure: 1.14, sunTargetY: 20, shadowRadius: 130,
+  },
+  captions: [
+    { t: 0.5,  cn: '如来翻掌一扑，化作五行山，将他压住', en: 'The Buddha turned his palm, and it became the Mountain of Five Elements' },
+    { t: 8.0,  cn: '山顶贴一帖，六字真言：唵嘛呢叭咪吽', en: 'On its peak, a seal of six syllables' },
+    { t: 15.0, cn: '饥餐铁丸，渴饮铜汁，五百年', en: 'Five hundred years of iron pellets and molten bronze' },
+    { t: 23.0, cn: '一个和尚自东土来，行至山下', en: 'A monk came from the East, and reached the foot of the mountain' },
+    { t: 30.0, cn: '揭下金帖，山崩石裂', en: 'He peeled away the golden seal, and the mountain broke' },
+    { t: 36.0, cn: '「师父，我出来也！」——自此保唐僧西行', en: '"Master, I am out!" — and so he guarded the monk westward' },
+  ],
+  cam: [
+    { t: 0,  p: [-46, 26, 168], l: [0, 34, 10] },     // the whole mountain, cold and far
+    { t: 9,  p: [-14, 30, 118], l: [0, 44, 6] },      // up at the seal through the seasons
+    { t: 16, p: [28, 30, 138], l: [0, 44, 6] },
+    { t: 23, p: [26, 7, 78],    l: [6, 5, 46] },      // the monk on the road
+    { t: 29, p: [12, 9, 52],    l: [0, 30, 16] },     // he climbs toward the seal
+    { t: 33, p: [17, 13, 76],   l: [0, 9, 26] },     // the mountain breaks — clear of the debris
+    { t: 37, p: [-16, 8, 62],   l: [-1, 4.5, 34] },  // the two of them
+    { t: 42, p: [-34, 22, 92],  l: [0, 20, 16] },
+  ],
+  build() {
+    reseed(30913);
+    const g = new THREE.Group();
+
+    // ---- the plain ------------------------------------------------------
+    const geo = new THREE.PlaneGeometry(900, 900, 120, 120);
+    geo.rotateX(-Math.PI / 2);
+    const gp = geo.attributes.position;
+    const cols = [];
+    const cA = new THREE.Color(0x6b7a44), cB = new THREE.Color(0x8a9052), tmp = new THREE.Color();
+    for (let i = 0; i < gp.count; i++) {
+      const x = gp.getX(i), z = gp.getZ(i);
+      gp.setY(i, groundY(x, z));
+      tmp.copy(cA).lerp(cB, clamp((Math.sin(x * 0.05) * Math.cos(z * 0.043) + 1) * 0.5, 0, 1));
+      cols.push(tmp.r, tmp.g, tmp.b);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+    geo.computeVertexNormals();
+    const groundMat = STD({ vertexColors: true, roughness: 1.0 });
+    const ground = shadowed(new THREE.Mesh(geo, groundMat), false, true);
+    g.add(ground);
+
+    // distant ranges, so the horizon is not a flat line
+    for (let i = 0; i < 22; i++) {
+      const a = rand(0, TAU), rr = rand(230, 400);
+      const m = makeRockMass(rand(26, 60), rand(16, 40), 0x4d5668, 0x6c7488, i * 1.7, 16);
+      m.position.set(Math.cos(a) * rr, -3, Math.sin(a) * rr);
+      g.add(m);
+    }
+
+    // ---- 五行山 — five stone fingers ------------------------------------
+    const mountain = new THREE.Group();
+    const base = makeRockMass(34, 20, 0x4a4740, 0x6d6a60, 3.1, 30);
+    mountain.add(base);
+    const peakMeshes = [];
+    for (let i = 0; i < PEAKS.length; i++) {
+      const P = PEAKS[i];
+      const spire = makeSpire(P.w, P.h, 0x6a6760, i * 2.9, 0);
+      spire.position.set(Math.sin(P.a) * P.r, 12, Math.cos(P.a) * P.r - 6);
+      spire.rotation.z = -Math.sin(P.a) * 0.13;
+      spire.rotation.x = 0.05;
+      mountain.add(spire);
+      peakMeshes.push(spire);
+      // a knuckle where each finger leaves the palm
+      const knuckle = shadowed(new THREE.Mesh(new THREE.DodecahedronGeometry(P.w * 1.25, 0),
+        STD({ color: 0x5c5952, roughness: 1.0, flatShading: true })));
+      knuckle.position.set(Math.sin(P.a) * P.r, 13, Math.cos(P.a) * P.r - 6);
+      mountain.add(knuckle);
+    }
+    g.add(mountain);
+
+    // ---- 金帖 — the seal on the highest finger --------------------------
+    const sealG = new THREE.Group();
+    const tallest = PEAKS[2];
+    sealG.position.set(Math.sin(tallest.a) * tallest.r, 12 + tallest.h * 0.88, Math.cos(tallest.a) * tallest.r - 6 + 3.4);
+    const sealMat = STD({
+      color: 0xf0d089, roughness: 0.45, metalness: 0.35,
+      emissive: 0xffbe4a, emissiveIntensity: 0.9, side: THREE.DoubleSide,
+    });
+    const seal = shadowed(new THREE.Mesh(new THREE.PlaneGeometry(6.0, 10.0), sealMat));
+    sealG.add(seal);
+    for (let i = 0; i < 6; i++) {                       // 唵嘛呢叭咪吽
+      const glyph = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.4, 0.1),
+        STD({ color: 0x7a2a18, roughness: 0.6 }));
+      glyph.position.set(0, 3.7 - i * 1.45, 0.1);
+      sealG.add(glyph);
+    }
+    g.add(sealG);
+    const sealLight = new THREE.PointLight(0xffc45c, 12, 90, 2);
+    sealLight.position.copy(sealG.position);
+    g.add(sealLight);
+    const sealRays = makeGodRays(6, 46, 0xffd489, 0.16, 7);
+    sealRays.group.position.copy(sealG.position);
+    sealRays.group.position.y += 16;
+    g.add(sealRays.group);
+
+    // ---- the road, and its flagstones ----------------------------------
+    const stones = [];
+    for (let z = 38; z < 260; z += 3.4) {
+      for (let k = -1; k <= 1; k++) {
+        const x = roadX(z) + k * 2.6 + rand(-0.5, 0.5);
+        const st = shadowed(new THREE.Mesh(
+          new THREE.CylinderGeometry(rand(1.3, 1.9), rand(1.3, 1.9), 0.35, 6),
+          STD({ color: pick([0x8e8878, 0x9a9384, 0x807a6c]), roughness: 1.0 })), false, true);
+        st.position.set(x, groundY(x, z) + 0.16, z);
+        st.rotation.y = rand(0, TAU);
+        g.add(st);
+        stones.push(st);
+      }
+    }
+    // roadside pines and grass
+    for (let i = 0; i < 70; i++) {
+      const z = rand(40, 300), side = chance(0.5) ? 1 : -1;
+      const x = roadX(z) + side * rand(9, 60);
+      if (Math.hypot(x, z) < 46 || (z < 104 && Math.abs(x) < 46)) continue;
+      const t = makeTreeSimple(rand(1.2, 2.4), 0x5a4227, pick([0x40603a, 0x36552f, 0x4c6a3e]), false);
+      t.position.set(x, groundY(x, z) - 0.2, z);
+      g.add(t);
+    }
+
+    // scatter: the plain was a billiard table
+    for (let i = 0; i < 150; i++) {
+      const a = rand(0, TAU), rr = rand(48, 320);
+      const x = Math.cos(a) * rr, z = Math.sin(a) * rr;
+      const b = shadowed(new THREE.Mesh(
+        chance(0.45) ? new THREE.DodecahedronGeometry(rand(0.8, 2.6), 0)
+                     : new THREE.SphereGeometry(rand(0.9, 2.2), 7, 6),
+        STD({ color: pick([0x6f6a56, 0x4f6b3c, 0x5d7a42, 0x7a7460]), roughness: 1.0, flatShading: true })));
+      b.position.set(x, groundY(x, z) + 0.3, z);
+      b.scale.y = rand(0.5, 0.9);
+      b.rotation.y = rand(0, TAU);
+      g.add(b);
+    }
+
+    // ---- 悟空 pinned under the rock -------------------------------------
+    const trapped = new THREE.Group();
+    trapped.position.set(0, 0, TRAP_Z);
+    const rubble = [];
+    for (let i = 0; i < 26; i++) {
+      const rock = shadowed(new THREE.Mesh(new THREE.DodecahedronGeometry(rand(1.4, 4.2), 0),
+        STD({ color: pick([0x5c5952, 0x6a675e, 0x4e4b45]), roughness: 1.0, flatShading: true })));
+      const a = rand(-1.5, 1.5);
+      rock.position.set(Math.sin(a) * rand(3, 12), rand(0.5, 7), Math.cos(a) * rand(-4, 3));
+      rock.rotation.set(rand(0, 3), rand(0, 3), rand(0, 3));
+      trapped.add(rock);
+      rubble.push({ rock, dir: rock.position.clone().normalize().add(new THREE.Vector3(0, 0.7, 0.5)).normalize(), base: rock.position.clone() });
+    }
+    // his head and one hand, and nothing else — the rest is under the mountain
+    const trapHead = new THREE.Group();
+    trapHead.position.set(0.6, 3.4, 3.6);
+    const furMat = STD({ color: C.fur, roughness: 1.0 });
+    const faceMat = STD({ color: C.furLight, roughness: 1.0 });
+    const skull = shadowed(new THREE.Mesh(new THREE.SphereGeometry(1.05, 14, 12), faceMat));
+    trapHead.add(skull);
+    const tmuzzle = new THREE.Mesh(new THREE.SphereGeometry(0.58, 10, 8), faceMat);
+    tmuzzle.position.set(0, -0.22, 0.82);
+    tmuzzle.scale.set(1.15, 0.8, 1);
+    trapHead.add(tmuzzle);
+    for (const sx of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.16, 7, 6), BASIC({ color: 0x14161c }));
+      eye.position.set(sx * 0.38, 0.12, 0.94);
+      trapHead.add(eye);
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), faceMat);
+      ear.position.set(sx * 1.08, 0.1, 0);
+      ear.scale.x = 0.5;
+      trapHead.add(ear);
+    }
+    const tband = new THREE.Mesh(new THREE.TorusGeometry(1.04, 0.13, 8, 22),
+      STD({ color: C.gold, metalness: 0.85, roughness: 0.25, emissive: 0x3a2a04, emissiveIntensity: 0.5 }));
+    tband.position.y = 0.55;
+    tband.rotation.x = Math.PI / 2;
+    trapHead.add(tband);
+    const truff = new THREE.Mesh(new THREE.TorusGeometry(0.98, 0.22, 6, 16), furMat);
+    truff.rotation.x = 0.1;
+    trapHead.add(truff);
+    trapped.add(trapHead);
+    const trapArm = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.34, 2.6, 3, 7), furMat));
+    trapArm.position.set(-3.4, 2.2, 4.2);
+    trapArm.rotation.set(0.5, 0, -0.9);
+    trapped.add(trapArm);
+    const trapHand = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 7), faceMat));
+    trapHand.position.set(-4.6, 3.4, 4.7);
+    trapped.add(trapHand);
+    g.add(trapped);
+
+    // ---- the pilgrims ----------------------------------------------------
+    const tang = makeTang(4.2);
+    tang.position.set(0, 0, 150);
+    g.add(tang);
+    const horse = makeHorse(1.15);
+    horse.position.set(4, 0, 156);
+    g.add(horse);
+
+    const wukong = makeWukong(4.6);
+    wukong.position.set(-2.5, 0, TRAP_Z + 7);
+    wukong.visible = false;
+    g.add(wukong);
+
+    // ---- weather and light effects --------------------------------------
+    const snow = makePointField(700, {
+      style: 'snow', area: new THREE.Vector3(150, 60, 150), origin: new THREE.Vector3(0, 0, 60),
+      rise: -6.0, drift: 3.0, sizeMin: 0.7, sizeMax: 1.7,
+      colorA: 0xffffff, colorB: 0xdfe8f4,
+    });
+    snow.setFade(0);
+    g.add(snow.points);
+
+    const leaves = makePointField(240, {
+      style: 'petal', area: new THREE.Vector3(120, 40, 120), origin: new THREE.Vector3(0, 0, 60),
+      rise: -3.2, drift: 4.0, sizeMin: 1.1, sizeMax: 2.4,
+      colorA: 0xd8a154, colorB: 0xc4703a,
+    });
+    leaves.setFade(0);
+    g.add(leaves.points);
+
+    const breakHalo = makeHalo(0xfff0c4, 4, 30, 0.5);
+    breakHalo.group.position.set(0, 3, TRAP_Z + 2);
+    breakHalo.group.visible = false;
+    g.add(breakHalo.group);
+    const breakBurst = makeBurst(300, 0xffe6b0, 16, 2.2);
+    breakBurst.points.position.set(0, 5, TRAP_Z);
+    g.add(breakBurst.points);
+    const freeLight = new THREE.PointLight(0xffd489, 0, 120, 2);
+    freeLight.position.set(0, 8, TRAP_Z + 2);
+    g.add(freeLight);
+
+    this._ = {
+      g, mountain, peakMeshes, sealG, sealMat, seal, sealLight, sealRays,
+      trapped, trapHead, rubble, tang, horse, wukong,
+      snow, leaves, breakHalo, breakBurst, freeLight, groundMat, ground,
+    };
+    return g;
+  },
+
+  update(t, dt) {
+    const S = this._;
+
+    // ---- the five hundred years: sun, sky and season, all from t ---------
+    // One "year" is a second and a half; the montage runs from 4s to 20s.
+    const mont = clamp((t - 4) / 16, 0, 1);
+    const spin = mont * TAU * 3.1;                      // three sunrises
+    const day = 0.5 + 0.5 * Math.sin(spin);             // 1 = noon, 0 = midnight
+    if (t < 21) {
+      const sx = Math.cos(spin + 1.4) * 0.7, sy = Math.sin(spin) * 0.85, sz = 0.45;
+      setSun(new THREE.Vector3(sx, Math.max(-0.3, sy), sz).normalize().multiplyScalar(300),
+        new THREE.Color(0xffe6bc).lerp(new THREE.Color(0xff9a5a), 1 - day), 0.5 + day * 2.2);
+      hemi.intensity = 0.28 + day * 0.75;
+      skyMat.uniforms.topColor.value.set(0x0a1330).lerp(new THREE.Color(0x2a4f8c), day);
+      skyMat.uniforms.midColor.value.set(0x2a3554).lerp(new THREE.Color(0x93a8cc), day);
+      skyMat.uniforms.botColor.value.set(0x5a3a4a).lerp(new THREE.Color(0xdcc49a), day);
+      skyMat.uniforms.uStars.value = (1 - day) * 0.75;
+      scene.fog.color.copy(skyMat.uniforms.midColor.value);
+      // winters come and go; the grass greys over and recovers
+      const season = (Math.sin(mont * TAU * 3.1 - 1.2) + 1) * 0.5;
+      const winter = clamp((season - 0.55) / 0.45, 0, 1);
+      S.snow.setFade(winter * 0.9);
+      S.leaves.setFade(clamp(1 - Math.abs(season - 0.42) / 0.3, 0, 1) * 0.55);
+      S.groundMat.color.setRGB(1, 1, 1).lerp(new THREE.Color(0xdfe6ee), winter * 0.8);
+    } else {
+      // settle into the clear afternoon the monk arrives in
+      const k = pulse(t, 21, 24);
+      setSun(new THREE.Vector3(0.62, 0.42, 0.66).normalize().multiplyScalar(300), 0xffe6bc, lerp(1.4, 2.3, k));
+      hemi.intensity = lerp(0.7, 1.0, k);
+      skyMat.uniforms.topColor.value.set(0x24406e);
+      skyMat.uniforms.midColor.value.set(0x8494b4);
+      skyMat.uniforms.botColor.value.set(0xd8bc92);
+      skyMat.uniforms.uStars.value = 0;
+      scene.fog.color.set(0xb8c2d0);
+      S.snow.setFade(0);
+      S.leaves.setFade(0.25);
+      S.groundMat.color.set(0xffffff);
+    }
+    S.snow.update(t);
+    S.leaves.update(t);
+    S.sealRays.update(t);
+
+    // the seal burns steadily, then is taken
+    const peeled = t > 29.5;
+    S.sealG.visible = !peeled;
+    S.sealMat.emissiveIntensity = peeled ? 0 : 0.7 + Math.sin(t * 2.2) * 0.25;
+    S.sealLight.intensity = peeled ? 0 : 10 + Math.sin(t * 2.2) * 3;
+    S.sealRays.mat.uniforms.uOpacity.value = peeled ? 0 : 0.16;
+
+    // ---- the monk walks the road, then climbs ---------------------------
+    const walkK = pulse(t, 18, 28);
+    const z = lerp(150, 40, ease(walkK));
+    const rx = roadX(z);
+    S.tang.position.set(rx, groundY(rx, z), z);
+    S.tang.rotation.y = Math.PI;
+    walk(S.tang, t, walkK > 0.001 && walkK < 0.999 ? 1.0 : 0, 1);
+    S.horse.position.set(rx + 4.5, groundY(rx + 4.5, z + 5), z + 5);
+    S.horse.rotation.y = Math.PI;
+    horseWalk(S.horse, t, walkK > 0.001 && walkK < 0.999 ? 1.0 : 0, 1);
+    // reaches up for the seal, then lowers the arm again — an arm left locked
+    // overhead reads as a permanently raised hand for the rest of the chapter
+    S.tang.userData.rig.armR.root.rotation.x =
+      -2.2 * (pulse(t, 27.5, 29.5) * (1 - pulse(t, 30.5, 32.5)));
+
+    // ---- the mountain breaks --------------------------------------------
+    const BREAK = 30.5;
+    const brk = pulse(t, BREAK, 33.5);
+    if (brk > 0) {
+      const k = easeOut(brk);
+      for (const r of S.rubble) {
+        r.rock.position.copy(r.base).addScaledVector(r.dir, k * 15);
+        r.rock.position.y = r.base.y + k * 9 - k * k * 7;
+        r.rock.rotation.x = k * 4 * (r.base.x > 0 ? 1 : -1);
+        r.rock.rotation.z = k * 3;
+      }
+      S.trapHead.visible = brk < 0.35;
+      S.breakHalo.group.visible = true;
+      S.breakHalo.update(t - BREAK, 0.5, 1 - brk * 0.4);
+      S.breakBurst.setAge(t - BREAK);
+      S.freeLight.intensity = 90 * Math.exp(-Math.pow((t - BREAK - 0.6) * 1.5, 2));
+      for (let i = 0; i < S.peakMeshes.length; i++) {
+        S.peakMeshes[i].rotation.z = -Math.sin(PEAKS[i].a) * 0.13 + Math.sin(t * 26 + i) * 0.02 * (1 - brk);
+      }
+    } else {
+      S.trapHead.visible = true;
+      S.freeLight.intensity = 0;
+      S.breakBurst.setAge(99);
+      // he strains against it, all five hundred years of it
+      S.trapHead.rotation.z = Math.sin(t * 0.8) * 0.06;
+      S.trapHead.rotation.y = Math.sin(t * 0.37) * 0.3;
+    }
+
+    // ---- free ------------------------------------------------------------
+    const out = pulse(t, 32.0, 35.0);
+    if (out > 0) {
+      S.wukong.visible = true;
+      const k = easeOut(out);
+      const wx = lerp(0.6, -2.5, k), wz = lerp(TRAP_Z + 3.6, TRAP_Z + 7, k);
+      S.wukong.position.set(wx, groundY(wx, wz) + lerp(2.4, 0, k) + (1 - k) * 2, wz);
+      S.wukong.rotation.y = lerp(0.2, Math.PI * 0.14, k);
+      if (t > 35) {
+        idle(S.wukong, t, 1);
+        // a bow to his new master, held rather than looped
+        const bow = pulse(t, 35.5, 37.0) * (1 - pulse(t, 39.0, 40.5));
+        S.wukong.userData.rig.body.rotation.x = bow * 0.5;
+        S.wukong.userData.rig.staff.rotation.z = Math.PI / 2 + bow * 0.4;
+      } else {
+        walk(S.wukong, t, 1.4, 1);
+      }
+    } else {
+      S.wukong.visible = false;
+    }
+  },
+});
+
+})();
+
+
+// ============================================================================
+//  第四回 · 火焰山 —— 八百里火焰，芭蕉扇
+//  The Flaming Mountains: eight hundred li of fire, and the palm-leaf fan.
+//
+//  The four pilgrims walk a road along +X. Their position is a single function
+//  of time (partyX below) and everything else -- camera, fire wall, fan -- is
+//  written against it, so nobody drifts out of formation.
+// ============================================================================
+(function () {
+
+const FIRE_X = 22;              // where the fire crosses the road
+
+function groundY(x, z) {
+  return Math.sin(x * 0.035) * Math.cos(z * 0.03) * 2.2
+       + Math.sin(x * 0.09 + z * 0.06) * 0.8
+       - Math.max(0, 1 - Math.abs(z) / 16) * 1.2;      // the road is a shallow cut
+}
+
+// Where the party is at story time t. They stall at the fire, then pass.
+function partyX(t) {
+  if (t < 30) return lerp(-52, FIRE_X - 10, ease(clamp((t - 3) / 27, 0, 1)));
+  return lerp(FIRE_X - 10, 48, ease(clamp((t - 32) / 10, 0, 1)));
+}
+
+registerChapter(4, {
+  title: { num: '第 四 回', cn: '火焰山', en: 'The Flaming Mountains' },
+  duration: 42,
+  sky: {
+    top: 0x3f1c3a,
+    mid: 0xa04430,
+    bot: 0xf6b45e,
+    sun: 0xffd08a,
+    sunDir: [0.72, 0.26, -0.64],
+    sunColor: 0xffb070,
+    sunI: 2.2,
+    hemiSky: 0xe8a06a,
+    hemiGround: 0x5a2418,
+    hemiI: 1.0,
+    fillColor: 0xff8a4a,
+    fillI: 0.7,
+    glow: 0.95,
+    stars: 0,
+    fog: { color: 0xc4623a, near: 60, far: 420 },
+    exposure: 1.05,
+    sunTargetY: 10,
+    shadowRadius: 80,
+  },
+  captions: [
+    { t: 0.5,  cn: '西行八百里，有火焰山，无春无秋，四季皆热', en: 'Eight hundred li of flame: no spring, no autumn, heat in all four seasons' },
+    { t: 9.0,  cn: '师徒四人，行至山下', en: 'Master and three disciples came to the foot of it' },
+    { t: 19.0, cn: '那火不是凡火，乃八卦炉中一点余星', en: 'No common fire — an ember fallen from the Eight Trigrams furnace' },
+    { t: 27.0, cn: '悟空三借芭蕉扇', en: 'Wukong three times borrowed the palm-leaf fan' },
+    { t: 33.0, cn: '一扇熄火，二扇生风，三扇下雨', en: 'One wave quenched the fire, two raised wind, three brought rain' },
+    { t: 38.0, cn: '师徒遂过火焰山', en: 'And so they passed the Flaming Mountains' },
+  ],
+  cam: [
+    { t: 0,  p: [-102, 15, 11], l: [8, 11, 0] },      // down the burning valley: the ridges are at |z|>20, so this corridor stays clear
+    { t: 9,  p: [-56, 8, 24],   l: [-40, 4, 2] },      // down at road level with them
+    { t: 18, p: [-14, 6, 22],   l: [0, 5, 0] },        // tracking alongside
+    { t: 26, p: [4, 6, 20],     l: [18, 6, 0] },       // the fire wall ahead
+    { t: 31, p: [10, 5, 15],    l: [22, 7, -1] },      // the fan
+    { t: 36, p: [26, 7, 22],    l: [30, 5, 0] },
+    { t: 42, p: [62, 30, 66],   l: [24, 12, -6] },     // out the far side
+  ],
+  build() {
+    reseed(40711);
+    const g = new THREE.Group();
+
+    // ---- scorched ground ------------------------------------------------
+    const geo = new THREE.PlaneGeometry(760, 760, 120, 120);
+    geo.rotateX(-Math.PI / 2);
+    const gp = geo.attributes.position;
+    const cols = [];
+    const cA = new THREE.Color(0x7a3520);
+    const cB = new THREE.Color(0xb0603a);
+    const tmp = new THREE.Color();
+    for (let i = 0; i < gp.count; i++) {
+      const x = gp.getX(i), z = gp.getZ(i);
+      gp.setY(i, groundY(x, z));
+      const heat = clamp(1 - Math.abs(z) / 90, 0, 1);
+      tmp.copy(cA).lerp(cB, clamp((Math.sin(x * 0.06) * Math.cos(z * 0.05) + 1) * 0.35 + heat * 0.4, 0, 1));
+      cols.push(tmp.r, tmp.g, tmp.b);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+    geo.computeVertexNormals();
+    g.add(shadowed(new THREE.Mesh(geo, STD({ vertexColors: true, roughness: 1.0 })), false, true));
+
+    // glowing cracks in the rock
+    for (let i = 0; i < 30; i++) {
+      const x = rand(-90, 90), z = (chance(0.5) ? 1 : -1) * rand(9, 42);
+      const crackMat = new THREE.MeshBasicMaterial({
+        color: 0xff7a26, transparent: true, opacity: 0.7,
+        blending: THREE.AdditiveBlending, depthWrite: false });
+      const crack = new THREE.Mesh(new THREE.PlaneGeometry(rand(4, 13), rand(0.5, 1.6)), crackMat);
+      crack.rotation.x = -Math.PI / 2;
+      crack.rotation.z = rand(0, TAU);
+      crack.position.set(x, groundY(x, z) + 0.12, z);
+      g.add(crack);
+    }
+
+    // ---- the burning ranges, flanking the road --------------------------
+    const fires = [];
+    for (let i = 0; i < 26; i++) {
+      const side = i % 2 ? 1 : -1;
+      const x = -92 + (i / 25) * 184 + rand(-5, 5);
+      const z = side * rand(20, 62);
+      const h = rand(14, 44);
+      const spire = makeSpire(rand(5, 11), h, pick([0x6e2f22, 0x81402a, 0x5c2a1e]), i * 1.9, rand(-0.08, 0.08));
+      spire.position.set(x, groundY(x, z) - 0.5, z);
+      g.add(spire);
+      if (i % 2 === 0) {
+        const f = makePointField(90, {
+          style: 'ember', area: new THREE.Vector3(4.5, 16, 4.5),
+          origin: new THREE.Vector3(x, groundY(x, z) + h * 0.70, z),
+          rise: 7.0, drift: 2.2, sizeMin: 1.5, sizeMax: 3.8,
+          colorA: 0xffd166, colorB: 0xff5a12,
+        });
+        g.add(f.points);
+        fires.push(f);
+      }
+    }
+
+    // ---- the road --------------------------------------------------------
+    for (let x = -120; x < 124; x += 3.6) {
+      for (let k = -1; k <= 1; k++) {
+        const z = k * 2.8 + rand(-0.6, 0.6);
+        const st = shadowed(new THREE.Mesh(
+          new THREE.CylinderGeometry(rand(1.3, 1.9), rand(1.3, 1.9), 0.3, 6),
+          STD({ color: pick([0x8a5a44, 0x9a6a4e, 0x7a4c38]), roughness: 1.0 })), false, true);
+        st.position.set(x + rand(-0.5, 0.5), groundY(x, z) + 0.14, z);
+        st.rotation.y = rand(0, TAU);
+        g.add(st);
+      }
+    }
+
+    // ---- the fire that crosses the road ----------------------------------
+    const wallSheet = makeWaterfall(42, 16, {
+      color: 0xff8a24, opacity: 0.42, speed: -2.6,
+      blending: THREE.AdditiveBlending, scale: 2.4,
+    });
+    wallSheet.group.rotation.y = Math.PI / 2;
+    wallSheet.group.position.set(FIRE_X, 7.0, 0);
+    g.add(wallSheet.group);
+    const wallEmbers = makePointField(300, {
+      style: 'ember', area: new THREE.Vector3(2.5, 24, 21),
+      origin: new THREE.Vector3(FIRE_X, -1, 0),
+      rise: 9.0, drift: 2.6, sizeMin: 0.9, sizeMax: 2.4,
+      colorA: 0xffe08a, colorB: 0xff4a10,
+    });
+    g.add(wallEmbers.points);
+    const wallLight = new THREE.PointLight(0xff7a2a, 34, 100, 2);
+    wallLight.position.set(FIRE_X - 3, 8, 0);
+    g.add(wallLight);
+
+    // ---- the palm-leaf fan ------------------------------------------------
+    const fan = new THREE.Group();
+    const leafMat = STD({ color: 0x6fae5a, roughness: 0.85, side: THREE.DoubleSide,
+      emissive: 0x143f14, emissiveIntensity: 0.3 });
+    const leaf = shadowed(new THREE.Mesh(
+      new THREE.CircleGeometry(5.4, 24, Math.PI * 0.14, Math.PI * 1.72), leafMat));
+    fan.add(leaf);
+    for (let i = 0; i < 9; i++) {
+      const rib = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.18, 5.0, 0.18),
+        STD({ color: 0x3f6b34, roughness: 0.9 })));
+      const a = -0.8 + (i / 8) * 1.6;
+      rib.position.set(Math.sin(a) * 2.5, Math.cos(a) * 2.5, 0.1);
+      rib.rotation.z = -a;
+      fan.add(rib);
+    }
+    const handle = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.3, 4.2, 8),
+      STD({ color: 0x6b4a26, roughness: 0.9 })));
+    handle.position.y = -3.2;
+    fan.add(handle);
+    fan.visible = false;
+    g.add(fan);
+
+    const gust = makePointField(180, {
+      style: 'snow', area: new THREE.Vector3(24, 13, 15),
+      origin: new THREE.Vector3(FIRE_X - 5, 1, 0),
+      rise: 3.0, drift: 6.0, sizeMin: 0.7, sizeMax: 1.6,
+      colorA: 0xdff0ff, colorB: 0xa8d8f0,
+    });
+    gust.setFade(0);
+    g.add(gust.points);
+
+    // ---- 师徒四人 ---------------------------------------------------------
+    const wukong = makeWukong(4.4);
+    const tang = makeTang(4.2);
+    const bajie = makeBajie(4.0);
+    const wujing = makeWujing(4.3);
+    const horse = makeHorse(1.2);
+    for (const a of [wukong, tang, bajie, wujing, horse]) g.add(a);
+
+    const ash = makePointField(220, {
+      style: 'ember', area: new THREE.Vector3(110, 34, 70), origin: new THREE.Vector3(0, 0, 0),
+      rise: 4.6, drift: 4.0, sizeMin: 0.6, sizeMax: 1.7,
+      colorA: 0xffc06a, colorB: 0xd8481a,
+    });
+    g.add(ash.points);
+
+    this._ = {
+      g, fires, wallSheet, wallEmbers, wallLight, fan, gust, ash,
+      wukong, tang, bajie, wujing, horse,
+    };
+    return g;
+  },
+
+  update(t, dt) {
+    const S = this._;
+    for (const f of S.fires) f.update(t);
+    S.wallSheet.update(t);
+    S.wallEmbers.update(t);
+    S.gust.update(t);
+    S.ash.update(t);
+
+    // ---- the party walks the road ---------------------------------------
+    const x = partyX(t);
+    const moving = (t > 3 && t < 29.5) || t > 32;
+    const spd = moving ? 1.0 : 0;
+
+    // Wukong scouts ahead; the horse carries the master; the other two trail.
+    const place = (actor, dx, dz, faceAhead) => {
+      const ax = x + dx, az = dz;
+      actor.position.set(ax, groundY(ax, az), az);
+      actor.rotation.y = faceAhead ? Math.PI / 2 : Math.PI / 2;
+    };
+    place(S.wukong, 7.5, -0.5);
+    place(S.horse, 0, 1.6);
+    place(S.tang, -1.8, -1.8);
+    place(S.bajie, -6.5, 2.6);
+    place(S.wujing, -9.5, -1.4);
+    walk(S.wukong, t, spd * 1.2, 1);
+    walk(S.bajie, t + 0.7, spd * 1.0, 0.9);
+    walk(S.wujing, t + 1.4, spd * 1.05, 0.95);
+    horseWalk(S.horse, t, spd, 1);
+
+    walk(S.tang, t + 0.3, spd * 0.95, 1);
+
+    // ---- the fire wall, and the fan that puts it out ---------------------
+    // 一扇熄火，二扇生风，三扇下雨 — three waves, and the road opens.
+    const wave1 = pulse(t, 30.0, 31.2);
+    const wave2 = pulse(t, 31.6, 32.6);
+    const wave3 = pulse(t, 33.0, 34.2);
+    const quench = clamp(wave1 * 0.45 + wave2 * 0.3 + wave3 * 0.25, 0, 1);
+
+    S.wallSheet.group.scale.y = Math.max(0.02, 1 - quench);
+    S.wallSheet.group.position.y = 7.0 * Math.max(0.02, 1 - quench);
+    S.wallEmbers.setFade(1 - quench);
+    S.wallLight.intensity = 34 * (1 - quench) * (0.85 + 0.15 * Math.sin(t * 9));
+    for (const f of S.fires) f.setFade(1 - quench * 0.65);
+    S.ash.setFade(1 - quench * 0.5);
+
+    // the fan sweeps in from Wukong's side of the road
+    const fanIn = pulse(t, 28.6, 30.0);
+    const fanOut = pulse(t, 34.4, 35.6);
+    S.fan.visible = fanIn > 0.01 && fanOut < 0.99;
+    if (S.fan.visible) {
+      const swing = Math.sin(t * 5.5) * 0.55;
+      S.fan.position.set(
+        x + lerp(6.0, 9.2, ease(fanIn)),
+        lerp(12, 6.0, ease(fanIn)) + Math.sin(t * 2.2) * 0.25,
+        lerp(-5.5, -1.4, ease(fanIn)));
+      S.fan.rotation.set(0, Math.PI * 0.5 + swing * 0.5, swing);
+      S.fan.scale.setScalar(lerp(0.4, 1, ease(fanIn)) * (1 - fanOut));
+    }
+    S.gust.setFade(Math.max(wave1, Math.max(wave2, wave3)) * (1 - pulse(t, 34.4, 35.4)) * 0.5);
+
+    // Wukong faces the fire and holds the fan up while the waves land
+    if (t > 27 && t < 35.5) {
+      S.wukong.userData.rig.armR.root.rotation.x = -2.0 + Math.sin(t * 5.5) * 0.35;
+      S.wukong.userData.rig.staff.rotation.z = Math.PI / 2 + Math.sin(t * 5.5) * 0.5;
+    }
+  },
+});
+
+})();
+
+
+// ============================================================================
+//  第五回 · 灵山取经 —— 雷音寺 · 佛光 · 真经
+//  Vulture Peak: the Thunderclap Monastery above the cloud sea, and the scrolls.
+//
+//  The climb is one long stair up the +Z axis. stairY() below is the single
+//  source of truth for how high the steps are at a given z, and the pilgrims,
+//  the camera targets and the terrace all read from it.
+// ============================================================================
+(function () {
+
+const STAIR_Z0 = 118;      // foot of the stair, where it leaves the cloud
+const STAIR_Z1 = 66;       // top of the stair, at the lip of the terrace
+const TERRACE_Y = 34;      // height of the temple terrace
+const SLOPE = TERRACE_Y / (STAIR_Z0 - STAIR_Z1);
+
+// The mountain is a cone whose flank has exactly this slope, so the steps lie
+// ON the rock instead of hovering over it or tunnelling through it.
+function stairY(z) {
+  return clamp((STAIR_Z0 - z) * SLOPE, 0, TERRACE_Y);
+}
+
+// Where the party is on the climb at story time t.
+function partyZ(t) {
+  return lerp(STAIR_Z0 - 4, 27, ease(clamp((t - 5) / 22, 0, 1)));
+}
+
+registerChapter(5, {
+  title: { num: '第 五 回', cn: '灵山取经', en: 'The Scriptures at Vulture Peak' },
+  duration: 44,
+  sky: {
+    top: 0x3f6fb8,
+    mid: 0xbcd2f0,
+    bot: 0xfff0cc,
+    sun: 0xfff6dc,
+    sunDir: [-0.28, 0.56, 0.78],
+    sunColor: 0xfff4d8,
+    sunI: 2.6,
+    hemiSky: 0xe8f0ff,
+    hemiGround: 0xbfae86,
+    hemiI: 1.25,
+    fillColor: 0xffe8bc,
+    fillI: 0.65,
+    glow: 1.0,
+    stars: 0,
+    fog: { color: 0xe4ecf8, near: 140, far: 800 },
+    exposure: 1.12,
+    sunTargetY: 30,
+    shadowRadius: 110,
+  },
+  captions: [
+    { t: 0.5,  cn: '灵山在望，云海之上', en: 'Vulture Peak, above the sea of cloud' },
+    { t: 8.0,  cn: '十四年，一十万八千里', en: 'Fourteen years, one hundred and eight thousand li' },
+    { t: 17.0, cn: '登上灵山，见大雷音寺', en: 'They climbed to the Thunderclap Monastery' },
+    { t: 26.0, cn: '如来赐经三十五部，五千零四十八卷', en: 'The Buddha granted them the scriptures' },
+    { t: 34.0, cn: '功成行满见真如，九九归真', en: 'The work complete, the journey whole' },
+    { t: 40.0, cn: '西游记 · 终', en: 'Journey to the West — end' },
+  ],
+  cam: [
+    { t: 0,  p: [-40, 22, 190], l: [0, 40, 40] },
+    { t: 8,  p: [-16, 12, 150], l: [0, 26, 60] },
+    { t: 17, p: [26, 20, 108], l: [0, 34, 46] },
+    { t: 26, p: [15, 44, 78],  l: [0, 42, 30] },
+    { t: 33, p: [-11, 41, 62], l: [0, 41, 22] },
+    { t: 39, p: [-24, 46, 78], l: [0, 43, 14] },
+    { t: 44, p: [-46, 68, 132], l: [0, 44, 10] },
+  ],
+  build() {
+    reseed(50823);
+    const g = new THREE.Group();
+
+    // ---- the cloud sea the peak stands in --------------------------------
+    const sea = makeCloudSea(60, 420, -8, { scale: 3.2, color: 0xf8f6f0, emissive: 0x6a80b8, minR: 60 });
+    g.add(sea.group);
+    const seaFar = makeCloudSea(30, 780, -24, { scale: 6.0, color: 0xeef2fa, emissive: 0x5a72aa, minR: 420, opacity: 0.8 });
+    g.add(seaFar.group);
+
+    // ---- the peak ---------------------------------------------------------
+    // A truncated cone, not a dome: a dome tall enough to read as a mountain
+    // closes over the terrace and the camera both.
+    // 0.8 below the terrace: coplanar tops z-fight into radial streaks
+    const peakGeo = new THREE.CylinderGeometry(STAIR_Z1, STAIR_Z0, TERRACE_Y - 0.8, 40, 3);
+    {
+      const pp = peakGeo.attributes.position;
+      for (let i = 0; i < pp.count; i++) {
+        const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i);
+        if (y > (TERRACE_Y - 0.8) / 2 - 0.01) continue;              // keep the summit flat
+        const a = Math.atan2(z, x);
+        const n = 1 + Math.sin(a * 7) * 0.035 + Math.sin(a * 15 + y * 0.2) * 0.02;
+        pp.setXYZ(i, x * n, y, z * n);
+      }
+      peakGeo.computeVertexNormals();
+    }
+    const peak = shadowed(new THREE.Mesh(peakGeo,
+      STD({ color: 0xbeae8e, roughness: 1.0, flatShading: true })));
+    peak.position.y = (TERRACE_Y - 0.8) / 2;
+    g.add(peak);
+    // the bulk below, disappearing into the cloud
+    const skirt = shadowed(new THREE.Mesh(
+      new THREE.CylinderGeometry(STAIR_Z0, STAIR_Z0 + 40, 44, 40, 1),
+      STD({ color: 0x9c8f74, roughness: 1.0, flatShading: true })));
+    skirt.position.y = -22;
+    g.add(skirt);
+    // crags on the flanks, kept off the stair
+    for (let i = 0; i < 11; i++) {
+      const a = rand(Math.PI * 0.30, Math.PI * 1.70);
+      const rr = rand(52, 92);
+      const sp = makeSpire(rand(6, 13), rand(22, 50), 0xa8987c, i * 2.2, rand(-0.06, 0.06));
+      sp.position.set(Math.sin(a) * rr, stairY(rr) - 2, Math.cos(a) * rr);
+      g.add(sp);
+    }
+
+    // ---- the terrace, and the stair up to it ----------------------------
+    const terrace = shadowed(new THREE.Mesh(
+      new THREE.CylinderGeometry(50, 52, 3.0, 44),
+      STD({ color: 0xe8e0cc, roughness: 0.8 })));
+    terrace.position.set(0, TERRACE_Y - 1.5, 0);
+    g.add(terrace);
+
+    const STEPS = 40;
+    const flight = makeStairs(STEPS, 20, TERRACE_Y / STEPS, (STAIR_Z0 - STAIR_Z1) / STEPS, 0xdcd4bf);
+    flight.position.set(0, 0, STAIR_Z1);
+    flight.rotation.y = Math.PI;
+    g.add(flight);
+
+    // lotus lamps up both sides of the stair
+    for (let i = 0; i < 12; i++) {
+      const z = lerp(STAIR_Z0 - 4, STAIR_Z1 + 4, i / 11);
+      for (const sx of [-1, 1]) {
+        const post = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 3.6, 8),
+          STD({ color: 0xc9bfa4, roughness: 0.9 })));
+        post.position.set(sx * 13, stairY(z) + 1.8, z);
+        g.add(post);
+        const bud = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8),
+          STD({ color: 0xffd98a, emissive: 0xffb445, emissiveIntensity: 1.5, roughness: 0.5 }));
+        bud.position.set(sx * 13, stairY(z) + 4.0, z);
+        g.add(bud);
+      }
+    }
+
+    // ---- 大雷音寺 — the Thunderclap Monastery ---------------------------
+    const temple = makeHall(30, 22, { pillarH: 11, roofH: 8.5, tiers: 2, nx: 6, nz: 4 });
+    temple.position.set(0, TERRACE_Y, -14);
+    g.add(temple);
+    for (const sx of [-1, 1]) {
+      const pagoda = new THREE.Group();
+      for (let i = 0; i < 5; i++) {
+        const w = 7 - i * 0.95;
+        const drum = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(w * 0.42, w * 0.46, 3.2, 12),
+          STD({ color: 0xf0e6cc, roughness: 0.85 })));
+        drum.position.y = 2 + i * 5.4;
+        pagoda.add(drum);
+        const rf = makeRoof(w, w, 2.6, {});
+        rf.position.y = 3.6 + i * 5.4;
+        pagoda.add(rf);
+      }
+      pagoda.position.set(sx * 30, TERRACE_Y, 6);
+      g.add(pagoda);
+    }
+
+    // ---- the lotus seat and the seated Buddha ---------------------------
+    const lotus = new THREE.Group();
+    lotus.position.set(0, TERRACE_Y + 1, 6);
+    const pod = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(5.4, 3.4, 2.2, 20),
+      STD({ color: 0xf2e2c4, roughness: 0.8 })));
+    pod.position.y = 1.1;
+    lotus.add(pod);
+    for (let ring = 0; ring < 2; ring++) {
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * TAU + ring * 0.26;
+        const petal = shadowed(new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 6),
+          STD({ color: ring ? 0xf7d9e2 : 0xfbeaf0, roughness: 0.7 })));
+        petal.position.set(Math.cos(a) * (5.0 - ring * 1.3), 1.4 + ring * 0.9, Math.sin(a) * (5.0 - ring * 1.3));
+        petal.scale.set(0.7, 0.45, 1.25);
+        petal.rotation.y = -a;
+        lotus.add(petal);
+      }
+    }
+    const buddha = new THREE.Group();
+    buddha.position.y = 2.4;
+    const bodyMat = STD({ color: 0xe8c069, metalness: 0.65, roughness: 0.35,
+      emissive: 0x4a3208, emissiveIntensity: 0.45 });
+    const torso = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.6, 5.0, 16), bodyMat));
+    torso.position.y = 2.6;
+    buddha.add(torso);
+    const shoulders = shadowed(new THREE.Mesh(new THREE.SphereGeometry(2.7, 14, 10), bodyMat));
+    shoulders.position.y = 5.0;
+    shoulders.scale.set(1.15, 0.7, 0.9);
+    buddha.add(shoulders);
+    const bhead = shadowed(new THREE.Mesh(new THREE.SphereGeometry(1.5, 14, 12), bodyMat));
+    bhead.position.y = 7.0;
+    buddha.add(bhead);
+    const ushnisha = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.8, 10, 8), bodyMat));
+    ushnisha.position.y = 8.2;
+    buddha.add(ushnisha);
+    for (const sx of [-1, 1]) {
+      const arm = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.75, 3.0, 4, 8), bodyMat));
+      arm.position.set(sx * 2.6, 3.4, 0.6);
+      arm.rotation.set(0.5, 0, sx * 0.5);
+      buddha.add(arm);
+      const knee = shadowed(new THREE.Mesh(new THREE.SphereGeometry(1.7, 10, 8), bodyMat));
+      knee.position.set(sx * 2.4, 0.9, 1.2);
+      knee.scale.set(1.1, 0.6, 1.2);
+      buddha.add(knee);
+    }
+    lotus.add(buddha);
+    g.add(lotus);
+
+    // ---- 佛光 — the halo, the rays, the falling petals ------------------
+    const haloMat = STD({ color: 0xffe6a0, roughness: 0.4, metalness: 0.5 });
+    haloMat.emissive = new THREE.Color(0xffc65a);
+    haloMat.emissiveIntensity = 1.6;
+    const haloRing = shadowed(new THREE.Mesh(new THREE.TorusGeometry(5.2, 0.45, 10, 40), haloMat));
+    haloRing.position.set(0, TERRACE_Y + 10.4, 4.4);
+    g.add(haloRing);
+
+    const rays = makeGodRays(30, 96, 0xffe9b4, 0.085, 13);
+    rays.group.position.set(0, TERRACE_Y + 34, 4);
+    g.add(rays.group);
+
+    const bloom = makeHalo(0xfff0c8, 4, 34, 0.34);
+    bloom.group.position.set(0, TERRACE_Y + 1.2, 6);
+    g.add(bloom.group);
+
+    const buddhaLight = new THREE.PointLight(0xffd88a, 45, 120, 2);
+    buddhaLight.position.set(0, TERRACE_Y + 9, 10);
+    g.add(buddhaLight);
+
+    const petals = makePointField(300, {
+      style: 'petal', area: new THREE.Vector3(60, 46, 60),
+      origin: new THREE.Vector3(0, TERRACE_Y - 4, 6),
+      rise: -2.4, drift: 3.2, sizeMin: 1.0, sizeMax: 2.4,
+      colorA: 0xffd9e6, colorB: 0xfff2cc,
+    });
+    g.add(petals.points);
+
+    const motes = makePointField(200, {
+      style: 'glow', area: new THREE.Vector3(46, 40, 46),
+      origin: new THREE.Vector3(0, TERRACE_Y - 6, 4),
+      rise: 2.0, drift: 2.0, sizeMin: 0.8, sizeMax: 2.0,
+      colorA: 0xffeec0, colorB: 0xfffaf0,
+    });
+    g.add(motes.points);
+
+    // ---- cranes over the peak --------------------------------------------
+    const cranes = [];
+    for (let i = 0; i < 5; i++) {
+      const crane = new THREE.Group();
+      const bodyC = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.5, 2.4, 4, 8),
+        STD({ color: 0xfbfaf6, roughness: 0.9 })));
+      bodyC.rotation.x = Math.PI / 2;
+      crane.add(bodyC);
+      const neck = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 2.0, 6),
+        STD({ color: 0xfbfaf6, roughness: 0.9 })));
+      neck.position.set(0, 0.3, 1.7);
+      neck.rotation.x = 1.2;
+      crane.add(neck);
+      const wings = [];
+      for (const sx of [-1, 1]) {
+        const w = shadowed(new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.14, 1.2),
+          STD({ color: 0xf2efe6, roughness: 0.95 })));
+        w.position.set(sx * 1.9, 0.1, 0);
+        crane.add(w);
+        wings.push(w);
+      }
+      g.add(crane);
+      cranes.push({ crane, wings, r: rand(46, 82), h: rand(52, 74), spd: rand(0.09, 0.17), ph: rand(0, TAU) });
+    }
+
+    // ---- 师徒四人 climbing ------------------------------------------------
+    const wukong = makeWukong(4.4);
+    const tang = makeTang(4.2);
+    const bajie = makeBajie(4.0);
+    const wujing = makeWujing(4.3);
+    const horse = makeHorse(1.2);
+    for (const a of [wukong, tang, bajie, wujing, horse]) g.add(a);
+
+    // ---- 真经 — the scrolls that come down to them ------------------------
+    const scrolls = [];
+    for (let i = 0; i < 14; i++) {
+      const sc = new THREE.Group();
+      const roll = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 2.6, 10),
+        STD({ color: 0xf6ecd2, roughness: 0.75, emissive: 0x6a5a20, emissiveIntensity: 0.4 })));
+      roll.rotation.z = Math.PI / 2;
+      sc.add(roll);
+      for (const sx of [-1, 1]) {
+        const cap = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.3, 10),
+          STD({ color: 0xd8a441, metalness: 0.7, roughness: 0.35 })));
+        cap.rotation.z = Math.PI / 2;
+        cap.position.x = sx * 1.35;
+        sc.add(cap);
+      }
+      g.add(sc);
+      scrolls.push({ sc, a: (i / 14) * TAU, ph: rand(0, TAU) });
+    }
+
+    this._ = {
+      g, sea, seaFar, rays, bloom, haloRing, haloMat, buddhaLight, petals, motes,
+      cranes, wukong, tang, bajie, wujing, horse, scrolls, lotus,
+    };
+    return g;
+  },
+
+  update(t, dt) {
+    const S = this._;
+    S.sea.update(t);
+    S.seaFar.update(t);
+    S.rays.update(t);
+    S.petals.update(t);
+    S.motes.update(t);
+    S.rays.group.rotation.y = t * 0.05;
+
+    // the light of the peak swells as they arrive
+    const arrive = pulse(t, 18, 30);
+    S.rays.mat.uniforms.uOpacity.value = 0.055 + arrive * 0.055;
+    S.bloom.update(t, 0.28, 0.55 + arrive * 0.5);
+    S.haloMat.emissiveIntensity = 1.3 + Math.sin(t * 1.6) * 0.2 + arrive * 0.5;
+    S.haloRing.rotation.z = Math.sin(t * 0.3) * 0.05;
+    S.buddhaLight.intensity = 30 + arrive * 30 + Math.sin(t * 1.9) * 4;
+
+    // ---- the climb --------------------------------------------------------
+    const z = partyZ(t);
+    const climbing = t > 5 && t < 27.5;
+    const spd = climbing ? 1.0 : 0;
+    const place = (actor, dx, dz) => {
+      const az = z + dz;
+      actor.position.set(dx, stairY(az), az);
+      actor.rotation.y = Math.PI;
+    };
+    place(S.wukong, -8.5, -3.0);
+    place(S.tang, 0.4, 0);
+    place(S.horse, 4.6, 2.0);
+    place(S.bajie, -3.6, 4.6);
+    place(S.wujing, 3.0, 6.4);
+    walk(S.wukong, t, spd * 1.1, 1);
+    walk(S.tang, t + 0.4, spd * 0.95, 1);
+    walk(S.bajie, t + 0.9, spd * 1.0, 0.9);
+    walk(S.wujing, t + 1.5, spd * 1.05, 0.95);
+    horseWalk(S.horse, t, spd, 1);
+
+    // at the top they bow
+    if (t > 28) {
+      const bow = pulse(t, 28.5, 30.5) * (1 - pulse(t, 40, 42));
+      for (const a of [S.wukong, S.tang, S.bajie, S.wujing]) {
+        idle(a, t, 0.5);
+        a.userData.rig.body.rotation.x = bow * 0.55;
+      }
+    }
+
+    // ---- the scriptures come down ----------------------------------------
+    const give = pulse(t, 29, 36);
+    for (let i = 0; i < S.scrolls.length; i++) {
+      const d = S.scrolls[i];
+      const k = clamp(give * 1.4 - i * 0.03, 0, 1);
+      const rad = lerp(7, 15, k);
+      const yy = lerp(TERRACE_Y + 13, TERRACE_Y + 4.5, easeOut(k)) + Math.sin(t * 1.3 + d.ph) * 0.5;
+      const ang = d.a + t * 0.22;
+      d.sc.position.set(Math.cos(ang) * rad, yy, 6 + Math.sin(ang) * rad);
+      d.sc.rotation.set(0, -ang, Math.sin(t * 1.1 + d.ph) * 0.15);
+      d.sc.visible = k > 0.01;
+    }
+
+    // ---- cranes -----------------------------------------------------------
+    for (const c of S.cranes) {
+      const a = t * c.spd + c.ph;
+      c.crane.position.set(Math.cos(a) * c.r, c.h + Math.sin(a * 2.1) * 3, Math.sin(a) * c.r + 6);
+      c.crane.rotation.y = -a + Math.PI / 2;
+      const flap = Math.sin(t * 5.5 + c.ph) * 0.5;
+      c.wings[0].rotation.z = flap;
+      c.wings[1].rotation.z = -flap;
+    }
+  },
+});
+
+})();
+
+
+// ============================================================================
+//  Audio cue table — GENERATED by gen_audio.py, do not hand-edit.
+// ============================================================================
+const CUES = {
+  narration: [
+    { id: 'ch1-01', ch: 1, t: 0.5, dur: 6.01, src: 'audio/narration/ch1-01.mp3' },   // 东胜神洲海外，有一座名山，唤为花果山…
+    { id: 'ch1-02', ch: 1, t: 10.5, dur: 6.74, src: 'audio/narration/ch1-02.mp3' },   // 山顶有一块仙石，受天真地秀，日精月华…
+    { id: 'ch1-03', ch: 1, t: 21.0, dur: 5.36, src: 'audio/narration/ch1-03.mp3' },   // 一日迸裂，产一石卵，因见风，化作一个…
+    { id: 'ch1-04', ch: 1, t: 30.0, dur: 4.52, src: 'audio/narration/ch1-04.mp3' },   // 目运两道金光，射冲斗府，惊动高天上圣…
+    { id: 'ch1-05', ch: 1, t: 37.0, dur: 4.81, src: 'audio/narration/ch1-05.mp3' },   // 众猴拜他为王，称美猴王，水帘洞天，自…
+    { id: 'ch2-01', ch: 2, t: 0.5, dur: 5.22, src: 'audio/narration/ch2-01.mp3' },   // 云宫琼阁，金阙银銮。天上一日，世上一…
+    { id: 'ch2-02', ch: 2, t: 9.0, dur: 6.37, src: 'audio/narration/ch2-02.mp3' },   // 官封弼马心何足，名注齐天意未宁。他嫌…
+    { id: 'ch2-03', ch: 2, t: 17.0, dur: 6.74, src: 'audio/narration/ch2-03.mp3' },   // 王母开蟠桃盛会，独不请他。先偷仙桃，…
+    { id: 'ch2-04', ch: 2, t: 26.0, dur: 6.32, src: 'audio/narration/ch2-04.mp3' },   // 玉帝点十万天兵，布天罗地网。那大圣公…
+    { id: 'ch2-05', ch: 2, t: 36.0, dur: 5.3, src: 'audio/narration/ch2-05.mp3' },   // 一棒起处，天兵披靡。自此人都唤他一声…
+    { id: 'ch3-01', ch: 3, t: 0.5, dur: 5.28, src: 'audio/narration/ch3-01.mp3' },   // 如来翻掌一扑，化作五行山，把那猴王压…
+    { id: 'ch3-02', ch: 3, t: 8.0, dur: 5.22, src: 'audio/narration/ch3-02.mp3' },   // 山顶贴一金帖，六字真言，风吹不动，雨…
+    { id: 'ch3-03', ch: 3, t: 15.0, dur: 5.28, src: 'audio/narration/ch3-03.mp3' },   // 饥餐铁丸，渴饮铜汁。寒来暑往，这一压…
+    { id: 'ch3-04', ch: 3, t: 23.0, dur: 4.21, src: 'audio/narration/ch3-04.mp3' },   // 五百年后，一个和尚自东土而来，行至山…
+    { id: 'ch3-05', ch: 3, t: 30.0, dur: 3.74, src: 'audio/narration/ch3-05.mp3' },   // 揭下金帖，只听一声响亮，山崩石裂。…
+    { id: 'ch3-06', ch: 3, t: 36.0, dur: 4.02, src: 'audio/narration/ch3-06.mp3' },   // 石中跳出猴王，高叫：师父，我出来也。…
+    { id: 'ch4-01', ch: 4, t: 0.5, dur: 5.12, src: 'audio/narration/ch4-01.mp3' },   // 西行八百里，有座火焰山，无春无秋，四…
+    { id: 'ch4-02', ch: 4, t: 9.0, dur: 6.71, src: 'audio/narration/ch4-02.mp3' },   // 师徒四人行至山下。那火不是凡火，乃八…
+    { id: 'ch4-03', ch: 4, t: 19.0, dur: 5.07, src: 'audio/narration/ch4-03.mp3' },   // 纵有铜脑盖、铁身躯，也要化成汁哩。前…
+    { id: 'ch4-04', ch: 4, t: 27.0, dur: 3.45, src: 'audio/narration/ch4-04.mp3' },   // 大圣三借芭蕉扇，方得真扇。…
+    { id: 'ch4-05', ch: 4, t: 33.0, dur: 3.68, src: 'audio/narration/ch4-05.mp3' },   // 一扇息火，二扇生风，三扇下雨。…
+    { id: 'ch4-06', ch: 4, t: 38.0, dur: 2.01, src: 'audio/narration/ch4-06.mp3' },   // 师徒遂过火焰山。…
+    { id: 'ch5-01', ch: 5, t: 0.5, dur: 3.63, src: 'audio/narration/ch5-01.mp3' },   // 灵山在望，就在云海之上，祥光万道。…
+    { id: 'ch5-02', ch: 5, t: 8.0, dur: 5.59, src: 'audio/narration/ch5-02.mp3' },   // 自出长安，已一十四年，行过一十万八千…
+    { id: 'ch5-03', ch: 5, t: 17.0, dur: 5.88, src: 'audio/narration/ch5-03.mp3' },   // 师徒登上灵山，得见大雷音寺，宝阁重重…
+    { id: 'ch5-04', ch: 5, t: 26.0, dur: 5.28, src: 'audio/narration/ch5-04.mp3' },   // 如来敕命开了宝阁，赐经三十五部，五千…
+    { id: 'ch5-05', ch: 5, t: 34.0, dur: 3.13, src: 'audio/narration/ch5-05.mp3' },   // 功成行满见真如，九九归真。…
+    { id: 'ch5-06', ch: 5, t: 40.0, dur: 1.51, src: 'audio/narration/ch5-06.mp3' },   // 西游记，终。…
+  ],
+  ambience: [
+    { ch: 1, dur: 22.07, src: 'audio/ambience/ch1.mp3' },
+    { ch: 2, dur: 22.07, src: 'audio/ambience/ch2.mp3' },
+    { ch: 3, dur: 22.07, src: 'audio/ambience/ch3.mp3' },
+    { ch: 4, dur: 22.07, src: 'audio/ambience/ch4.mp3' },
+    { ch: 5, dur: 22.07, src: 'audio/ambience/ch5.mp3' },
+  ],
+  sfx: [
+    { name: 'stone-split', ch: 1, t: 25.3, src: 'audio/sfx/stone-split.mp3' },
+    { name: 'cudgel-blow', ch: 2, t: 29.3, src: 'audio/sfx/cudgel-blow.mp3' },
+    { name: 'mountain-break', ch: 3, t: 30.3, src: 'audio/sfx/mountain-break.mp3' },
+    { name: 'fan-wave', ch: 4, t: 29.9, src: 'audio/sfx/fan-wave.mp3' },
+    { name: 'fan-wave', ch: 4, t: 31.5, src: 'audio/sfx/fan-wave.mp3' },
+    { name: 'fan-wave', ch: 4, t: 32.9, src: 'audio/sfx/fan-wave.mp3' },
+    { name: 'heaven-light', ch: 5, t: 28.8, src: 'audio/sfx/heaven-light.mp3' },
+  ],
+};
+
+
+// ============================================================================
+//  Audio
+//
+//  Three layers, all driven from the same story clock the visuals use:
+//    narration  one clip per caption beat, fired as the clock crosses its t
+//    ambience   one looping bed per chapter, crossfaded at chapter changes
+//    sfx        one-shots on the big beats
+//
+//  Plain <audio> elements, not Web Audio: decodeAudioData needs fetch(), and
+//  fetch() on file:// is a CORS error — the whole soundtrack would silently
+//  fail for anyone who just double-clicks scene.html.
+// ============================================================================
+
+const audio = (function () {
+  const GAIN = { narration: 1.0, ambience: 0.30, sfx: 0.55 };
+  const FADE = 0.9;              // seconds to crossfade an ambience bed
+
+  let enabled = false;           // set true by the first user gesture
+  let muted = false;
+  let master = 0.8;
+  let lastCh = -1, lastT = -1;
+  const fired = new Set();
+
+  function make(src, loop) {
+    const a = new Audio(src);
+    a.preload = 'auto';
+    a.loop = !!loop;
+    a.volume = 0;
+    return a;
+  }
+
+  // Elements are created lazily in enable(), not at load. Constructing ~40
+  // preloading <audio> elements up front stalls the page before the first
+  // frame — and it makes someone who only wants to watch silently pay for a
+  // soundtrack they never asked for.
+  const narration = CUES.narration.map((c) => ({ ...c, el: null }));
+  const beds = CUES.ambience.map((c) => ({ ...c, el: null, vol: 0, want: 0, retryAt: 0 }));
+  // sfx get two elements each so a repeated cue (the three fan waves) can
+  // overlap itself instead of cutting its own tail off
+  const sfx = CUES.sfx.map((c) => ({ ...c, els: null, n: 0 }));
+
+  let speaking = null;
+
+  function play(el, gain) {
+    if (!enabled) return;
+    try {
+      el.currentTime = 0;
+      el.volume = Math.max(0, Math.min(1, master * gain * (muted ? 0 : 1)));
+      const p = el.play();
+      if (p && p.catch) p.catch(() => {});     // autoplay refusals are not fatal
+    } catch (e) { /* ignore */ }
+  }
+
+  function stopSpeech() {
+    if (speaking) { try { speaking.pause(); } catch (e) {} speaking = null; }
+  }
+
+  function applyVolumes() {
+    const m = muted ? 0 : master;
+    for (const b of beds) if (b.el) b.el.volume = Math.max(0, Math.min(1, b.vol * GAIN.ambience * m));
+    if (speaking) speaking.volume = Math.max(0, Math.min(1, GAIN.narration * m));
+    for (const s of sfx) if (s.els) for (const el of s.els) {
+      if (!el.paused) el.volume = Math.max(0, Math.min(1, GAIN.sfx * m));
+    }
+  }
+
+  return {
+    get enabled() { return enabled; },
+    get muted() { return muted; },
+
+    // Called from the click on the start gate. Kicking every bed off here (and
+    // muting it immediately) is what buys permission to start it later without
+    // another gesture.
+    enable() {
+      if (enabled) return;
+      enabled = true;
+      for (const c of narration) if (!c.el) c.el = make(c.src, false);
+      for (const s2 of sfx) if (!s2.els) s2.els = [make(s2.src, false), make(s2.src, false)];
+      for (const b of beds) {
+        if (!b.el) b.el = make(b.src, true);
+        b.el.volume = 0;
+        const p = b.el.play();
+        if (p && p.catch) p.catch(() => {});
+      }
+      lastCh = -1; lastT = -1; fired.clear();
+    },
+
+    setMuted(v) { muted = !!v; applyVolumes(); },
+    setVolume(v) { master = Math.max(0, Math.min(1, v)); applyVolumes(); },
+
+    pause() {
+      for (const b of beds) if (b.el) { try { b.el.pause(); } catch (e) {} }
+      if (speaking) { try { speaking.pause(); } catch (e) {} }
+    },
+    resume() {
+      if (!enabled) return;
+      for (const b of beds) if (b.el && b.want > 0.001) { const p = b.el.play(); if (p && p.catch) p.catch(() => {}); }
+      if (speaking) { const p = speaking.play(); if (p && p.catch) p.catch(() => {}); }
+    },
+
+    // ch is 1-based, localT is seconds inside that chapter.
+    sync(ch, localT, dt) {
+      if (!enabled) return;
+      const now = (typeof performance !== 'undefined' ? performance.now() : 0) / 1000;
+
+      // A chapter change, a loop back to the start, or a scrub all mean the
+      // same thing: forget what has been fired, and treat everything already
+      // behind the playhead as spent rather than replaying it in a burst.
+      const jumped = ch !== lastCh || localT < lastT - 0.12 || localT > lastT + 1.0;
+      if (jumped) {
+        fired.clear();
+        stopSpeech();
+        for (const s of sfx) if (s.els) for (const el of s.els) { try { el.pause(); } catch (e) {} }
+        for (const c of narration) if (c.ch === ch && c.t <= localT) fired.add('n' + c.id);
+        for (let i = 0; i < sfx.length; i++) if (sfx[i].ch === ch && sfx[i].t <= localT) fired.add('s' + i);
+      }
+
+      for (const c of narration) {
+        if (c.ch !== ch || !c.el || fired.has('n' + c.id) || localT < c.t) continue;
+        fired.add('n' + c.id);
+        stopSpeech();
+        speaking = c.el;
+        play(c.el, GAIN.narration);
+      }
+      for (let i = 0; i < sfx.length; i++) {
+        const s = sfx[i];
+        if (s.ch !== ch || !s.els || fired.has('s' + i) || localT < s.t) continue;
+        fired.add('s' + i);
+        play(s.els[s.n++ % s.els.length], GAIN.sfx);
+      }
+
+      for (const b of beds) b.want = (b.ch === ch) ? 1 : 0;
+      const step = dt / FADE;
+      for (const b of beds) {
+        b.vol += Math.max(-step, Math.min(step, b.want - b.vol));
+        // Retry a stalled bed at most twice a second. Without the throttle a
+        // bed that refuses to start (autoplay policy, missing file) gets a
+        // play() call on every single frame for the rest of the film.
+        if (b.el && b.vol > 0.001 && b.el.paused && now >= b.retryAt) {
+          b.retryAt = now + 0.5;
+          const p = b.el.play();
+          if (p && p.catch) p.catch(() => {});
+        }
+      }
+      applyVolumes();
+
+      lastCh = ch; lastT = localT;
+    },
+  };
+})();
+
+
+// ============================================================================
+//  The director
+//
+//  Chapters are self-contained and all sit at the origin; exactly one is
+//  visible at a time. The director owns the clock, the camera, the sky/light
+//  state and the caption track, so a chapter change is a state swap behind a
+//  1.1s veil rather than five worlds fighting over one scene graph.
+// ============================================================================
+
+const ORDER = [1, 2, 3, 4, 5].filter((id) => CHAPTER_IMPL[id]);
+const FADE = 1.1;
+
+const chapters = ORDER.map((id) => {
+  const impl = CHAPTER_IMPL[id];
+  const group = impl.build();
+  group.name = 'chapter_' + id;
+  group.visible = false;
+  scene.add(group);
+  return { id, impl, group, duration: impl.duration };
+});
+
+let clockOffset = 0;
+{
+  let acc = 0;
+  for (const c of chapters) { c.start = acc; acc += c.duration; }
+  var TOTAL = acc;
+}
+
+const dom = {
+  boot: document.getElementById('boot'),
+  chapNum: document.querySelector('#chapter .num'),
+  chapCn: document.querySelector('#chapter .cn'),
+  chapEn: document.querySelector('#chapter .en'),
+  chapBox: document.getElementById('chapter'),
+  capCn: document.querySelector('#caption .cn'),
+  capEn: document.querySelector('#caption .en'),
+  capBox: document.getElementById('caption'),
+  fade: document.getElementById('fade'),
+};
+
+// In freeze mode every CSS transition would still be mid-flight when Chrome
+// grabs the frame, so the overlays would screenshot half-faded.
+if (P_FREEZE) {
+  for (const el of [dom.chapBox, dom.capBox]) el.style.transition = 'none';
+}
+
+// --- Catmull-Rom through the camera keyframes. Plain per-segment easing would
+// --- bring the camera to a dead stop at every key; this keeps it gliding.
+function catmull(p0, p1, p2, p3, u) {
+  const u2 = u * u, u3 = u2 * u;
+  return 0.5 * ((2 * p1) + (-p0 + p2) * u
+    + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2
+    + (-p0 + 3 * p1 - 3 * p2 + p3) * u3);
+}
+
+const _p = new THREE.Vector3(), _l = new THREE.Vector3();
+function sampleCam(keys, t) {
+  let i = 0;
+  while (i < keys.length - 2 && t >= keys[i + 1].t) i++;
+  const k1 = keys[i], k2 = keys[i + 1] || keys[i];
+  const k0 = keys[i - 1] || k1, k3 = keys[i + 2] || k2;
+  const span = Math.max(1e-4, k2.t - k1.t);
+  const u = clamp((t - k1.t) / span, 0, 1);
+  _p.set(
+    catmull(k0.p[0], k1.p[0], k2.p[0], k3.p[0], u),
+    catmull(k0.p[1], k1.p[1], k2.p[1], k3.p[1], u),
+    catmull(k0.p[2], k1.p[2], k2.p[2], k3.p[2], u));
+  _l.set(
+    catmull(k0.l[0], k1.l[0], k2.l[0], k3.l[0], u),
+    catmull(k0.l[1], k1.l[1], k2.l[1], k3.l[1], u),
+    catmull(k0.l[2], k1.l[2], k2.l[2], k3.l[2], u));
+  return { fov: lerp(k1.fov || 52, k2.fov || 52, ease(u)) };
+}
+
+function applySky(s) {
+  skyMat.uniforms.topColor.value.set(s.top);
+  skyMat.uniforms.midColor.value.set(s.mid);
+  skyMat.uniforms.botColor.value.set(s.bot);
+  skyMat.uniforms.sunColor.value.set(s.sun);
+  skyMat.uniforms.uGlow.value = s.glow !== undefined ? s.glow : 1.0;
+  skyMat.uniforms.uStars.value = s.stars || 0;
+  setSun(new THREE.Vector3().fromArray(s.sunDir).normalize().multiplyScalar(300), s.sunColor, s.sunI);
+  sun.target.position.set(0, s.sunTargetY || 20, 0);
+  sun.target.updateMatrixWorld();
+  const sr = s.shadowRadius || 150;
+  sun.shadow.camera.left = -sr; sun.shadow.camera.right = sr;
+  sun.shadow.camera.top = sr; sun.shadow.camera.bottom = -sr;
+  sun.shadow.camera.far = 900;
+  sun.shadow.camera.updateProjectionMatrix();
+  hemi.color.set(s.hemiSky); hemi.groundColor.set(s.hemiGround); hemi.intensity = s.hemiI;
+  fill.color.set(s.fillColor || 0x6f86c4);
+  fill.intensity = s.fillI !== undefined ? s.fillI : 0.4;
+  scene.fog.color.set(s.fog.color);
+  scene.fog.near = s.fog.near;
+  scene.fog.far = s.fog.far;
+  renderer.toneMappingExposure = s.exposure || 1.1;
+}
+
+let activeIdx = -1;
+let capIdx = -1;
+
+function setChapter(i) {
+  if (i === activeIdx) return;
+  if (activeIdx >= 0) chapters[activeIdx].group.visible = false;
+  activeIdx = i;
+  const c = chapters[i];
+  c.group.visible = true;
+  applySky(c.impl.sky);
+  dom.chapNum.textContent = c.impl.title.num;
+  dom.chapCn.textContent = c.impl.title.cn;
+  dom.chapEn.textContent = c.impl.title.en;
+  capIdx = -1;
+  dom.capCn.textContent = '';
+  dom.capEn.textContent = '';
+}
+
+function setCaption(c, localT) {
+  const caps = c.impl.captions;
+  let idx = -1;
+  for (let i = 0; i < caps.length; i++) if (localT >= caps[i].t) idx = i;
+  if (idx !== capIdx) {
+    capIdx = idx;
+    dom.capCn.textContent = idx >= 0 ? caps[idx].cn : '';
+    dom.capEn.textContent = idx >= 0 ? caps[idx].en : '';
+  }
+  // fade the caption out just before the next one arrives
+  let vis = 0;
+  if (idx >= 0) {
+    const start = caps[idx].t;
+    const end = idx + 1 < caps.length ? caps[idx + 1].t : c.duration;
+    vis = Math.min(pulse(localT, start, start + 0.9), 1 - pulse(localT, end - 0.7, end));
+  }
+  dom.capBox.style.opacity = clamp(vis, 0, 1).toFixed(3);
+}
+
+const director = {
+  time: 0,
+  paused: false,
+
+  // The director owns the story clock, so pausing and scrubbing are one line
+  // each. (Deriving story time from THREE.Clock.elapsedTime instead means a
+  // pause silently swallows the paused duration on resume.)
+  advance(dt) { if (!this.paused) this.time += dt; },
+  seekTo(t) { this.time = TOTAL > 0 ? ((t % TOTAL) + TOTAL) % TOTAL : 0; },
+
+  update(dt) {
+    const time = this.time;
+    const wrapped = TOTAL > 0 ? ((time % TOTAL) + TOTAL) % TOTAL : 0;
+    let i = 0;
+    while (i < chapters.length - 1 && wrapped >= chapters[i].start + chapters[i].duration) i++;
+    setChapter(i);
+    const c = chapters[i];
+    const localT = wrapped - c.start;
+
+    c.impl.update(localT, dt);
+
+    const camInfo = sampleCam(c.impl.cam, localT);
+    camera.position.copy(_p);
+    camera.lookAt(_l);
+    if (Math.abs(camera.fov - camInfo.fov) > 0.01) {
+      camera.fov = camInfo.fov;
+      camera.updateProjectionMatrix();
+    }
+
+    setCaption(c, localT);
+    audio.sync(c.id, localT, dt);
+
+    // title card: in for the first breath of the chapter, then out of the way
+    const titleVis = Math.min(pulse(localT, 0.3, 1.6), 1 - pulse(localT, 7.5, 9.0));
+    dom.chapBox.style.opacity = clamp(titleVis, 0, 1).toFixed(3);
+
+    // veil across chapter boundaries (and up from black at the very start)
+    const fadeOut = pulse(localT, c.duration - FADE, c.duration);
+    const fadeIn = 1 - pulse(localT, 0, FADE);
+    dom.fade.style.opacity = clamp(Math.max(fadeOut, fadeIn), 0, 1).toFixed(3);
+
+    skyMat.uniforms.uTime.value = time;
+  },
+};
+
+// Where the clock starts: ?chapter=N&t=X lands exactly on that story beat.
+if (P_CHAPTER !== null) {
+  const idx = clamp(P_CHAPTER - 1, 0, chapters.length - 1);
+  clockOffset = chapters[idx].start + (P_TIME || 0);
+} else {
+  clockOffset = P_TIME || 0;
+}
+director.time = clockOffset;
+
+
+// ============================================================================
+//  Transport: start gate, play/pause, scrub bar, mute, volume
+//
+//  The gate exists because browsers refuse to start audio without a user
+//  gesture. It doubles as the title card.
+// ============================================================================
+
+const ui = (function () {
+  const gate = document.getElementById('gate');
+  const bar = document.getElementById('bar');
+  const btnPlay = document.getElementById('btn-play');
+  const btnMute = document.getElementById('btn-mute');
+  const vol = document.getElementById('vol');
+  const track = document.getElementById('track');
+  const fill = track.querySelector('.fill');
+  const knob = track.querySelector('.knob');
+  const hover = track.querySelector('.hover');
+  const clockEl = document.getElementById('clock');
+
+  // Screenshots must not have the chrome in them.
+  if (P_FREEZE) {
+    for (const el of [gate, bar]) el.style.display = 'none';
+    return { update() {}, started: true };
+  }
+
+  function mmss(s) {
+    s = Math.max(0, Math.round(s));
+    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  // chapter boundaries as ticks on the rail
+  for (const c of chapters) {
+    if (c.start === 0) continue;
+    const tick = document.createElement('div');
+    tick.className = 'tick';
+    tick.style.left = (c.start / TOTAL * 100) + '%';
+    track.appendChild(tick);
+  }
+
+  let started = false;
+  function start(withSound) {
+    if (started) return;
+    started = true;
+    if (withSound) audio.enable();
+    audio.setMuted(!withSound);
+    audio.setVolume(vol.value / 100);
+    btnMute.textContent = withSound ? '静音' : '开声';
+    director.seekTo(0);
+    gate.style.opacity = '0';
+    setTimeout(() => { gate.style.display = 'none'; }, 850);
+    showBar();
+  }
+  document.getElementById('gate-go').addEventListener('click', () => start(true));
+  document.getElementById('gate-mute').addEventListener('click', () => start(false));
+
+  // the bar hides itself when the pointer is still, so the film is unobstructed
+  let hideAt = 0;
+  function showBar() { bar.classList.add('show'); hideAt = performance.now() + 2600; }
+  window.addEventListener('mousemove', showBar);
+  window.addEventListener('touchstart', showBar);
+
+  function setPaused(p) {
+    director.paused = p;
+    btnPlay.textContent = p ? '播放' : '暂停';
+    if (p) audio.pause(); else audio.resume();
+  }
+  btnPlay.addEventListener('click', () => { setPaused(!director.paused); showBar(); });
+
+  btnMute.addEventListener('click', () => {
+    // First press of 开声 on a muted start still needs to unlock playback.
+    if (!audio.enabled) audio.enable();
+    const m = !audio.muted;
+    audio.setMuted(m);
+    btnMute.textContent = m ? '开声' : '静音';
+    showBar();
+  });
+
+  vol.addEventListener('input', () => {
+    audio.setVolume(vol.value / 100);
+    if (audio.muted && vol.value > 0) { audio.setMuted(false); btnMute.textContent = '静音'; }
+    showBar();
+  });
+
+  // ---- scrubbing ----------------------------------------------------------
+  function timeAt(ev) {
+    const r = track.getBoundingClientRect();
+    return clamp((ev.clientX - r.left) / r.width, 0, 1) * TOTAL;
+  }
+  let dragging = false;
+  function seek(ev) { director.seekTo(timeAt(ev)); }
+  track.addEventListener('mousedown', (ev) => { dragging = true; seek(ev); ev.preventDefault(); });
+  window.addEventListener('mousemove', (ev) => {
+    if (dragging) seek(ev);
+    if (ev.target === track || track.contains(ev.target)) {
+      const r = track.getBoundingClientRect();
+      const t = timeAt(ev);
+      let name = '';
+      for (const c of chapters) if (t >= c.start) name = c.impl.title.cn;
+      hover.style.display = 'block';
+      hover.style.left = (ev.clientX - r.left) + 'px';
+      hover.textContent = mmss(t) + ' · ' + name;
+    } else {
+      hover.style.display = 'none';
+    }
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+
+  return {
+    get started() { return started; },
+    setPaused,
+    update() {
+      const t = TOTAL > 0 ? ((director.time % TOTAL) + TOTAL) % TOTAL : 0;
+      const pct = (t / TOTAL * 100);
+      fill.style.width = pct + '%';
+      knob.style.left = pct + '%';
+      clockEl.textContent = mmss(t) + ' / ' + mmss(TOTAL);
+      if (bar.classList.contains('show') && performance.now() > hideAt && !dragging) {
+        bar.classList.remove('show');
+      }
+    },
+  };
+})();
+
+
+// ============================================================================
+//  The loop
+//
+//  One clock, one render call. In freeze mode we draw exactly one frame at the
+//  requested story time and stop, so a screenshot is a pure function of the
+//  URL — no dependence on how fast the machine got through the first seconds.
+// ============================================================================
+
+const clock = new THREE.Clock();
+let booted = false;
+
+function dropBoot() {
+  if (booted) return;
+  booted = true;
+  if (dom.boot && dom.boot.parentNode) dom.boot.parentNode.removeChild(dom.boot);
+}
+
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  director.advance(dt);
+  director.update(dt);
+  ui.update();
+  renderer.render(scene, camera);
+  dropBoot();
+}
+
+if (P_FREEZE) {
+  // Deterministic single frame, rendered SYNCHRONOUSLY during page parse.
+  // Both details are load-bearing for headless capture:
+  //   - via requestAnimationFrame the pixels never reach the screenshot at all
+  //     (the tool captures a compositor frame that predates the canvas), which
+  //     looks exactly like a scene that renders nothing;
+  //   - without preserveDrawingBuffer the buffer is discarded before the
+  //     screenshot is taken, giving a black PNG.
+  // Two passes: the first compiles shaders, the second is the photograph.
+  director.update(1 / 60);
+  renderer.render(scene, camera);
+  director.update(1 / 60);
+  renderer.render(scene, camera);
+  dropBoot();
+} else {
+  renderer.setAnimationLoop(frame);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ---- keyboard ---------------------------------------------------------------
+//   space  pause      [ ]  chapter      < >  ±5s      m  mute
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    ui.setPaused(!director.paused);
+  } else if (e.code === 'BracketRight' || e.code === 'BracketLeft') {
+    const dir = e.code === 'BracketRight' ? 1 : -1;
+    const next = clamp(activeIdx + dir, 0, chapters.length - 1);
+    director.seekTo(chapters[next].start + 0.05);
+  } else if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') {
+    director.seekTo(director.time + (e.code === 'ArrowRight' ? 5 : -5));
+  } else if (e.code === 'KeyM') {
+    document.getElementById('btn-mute').click();
+  }
+});
+
+</script>
+</body>
+</html>
+

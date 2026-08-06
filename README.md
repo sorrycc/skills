@@ -30,6 +30,7 @@ npx skills add sorrycc/skills
 | Skill | Description |
 |-------|-------------|
 | [create-skill](skills/create-skill/SKILL.md) | Scaffold a new skill — creates the directory and a well-formed SKILL.md. |
+| [karpathy-3d-story](skills/karpathy-3d-story/SKILL.md) | Build a multi-chapter animated 3D story — procedural three.js in one `scene.html`, deterministic and seeded, with a mandatory screenshot audit loop and optional ElevenLabs narration. Idea from [@karpathy](https://x.com/karpathy/status/2083749667410727319). |
 
 ## License
 
