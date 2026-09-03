@@ -9,8 +9,9 @@ Create a new skill for the user.
 
 ## Instructions
 
-1. **Determine save location**: Check whether the first argument token equals `global`.
-   - If it does, save to `~/.claude/skills/<skill-name>/SKILL.md`, and treat the remaining tokens as the skill description.
+1. **Determine save location**: Check the first argument token(s).
+   - `global` → save to `~/.claude/skills/<skill-name>/SKILL.md`, and treat the remaining tokens as the skill description.
+   - A destination naming the cc-skills repo (e.g. `to ~/Projects/cc-skills`) → save to `~/Projects/cc-skills/.claude/skills/<skill-name>/` (skills live under `.claude/skills/`, NOT the repo root). Follow that repo's `CLAUDE.md`: gen-image is the reference template, no secrets in committed files (public repo), and finish with its "Adding a skill" checklist (`.sync-targets.json` + `bun run sync` + `bun run readme`).
    - Otherwise, save to `./.claude/skills/<skill-name>/SKILL.md` (project scope), and treat all tokens as the skill description.
 
    The **command name comes from the directory name** (`my-skill/` → `/my-skill`), not from the `name` field.
