@@ -1,0 +1,137 @@
+/* Theme: tech-docs
+   Fonts — put this in <head> before tokens.css:
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+   Change values freely for the project. Keep the names. */
+:root {
+  color-scheme: light dark;
+
+  /* color roles */
+  --bg: #ffffff;
+  --surface: #f8f9fa;
+  --surface-2: #f0f2f4;
+  --text: #1b1f24;
+  --text-muted: #59636e;
+  --border: #dde1e6;
+  --accent: #0f6b8f;
+  --accent-hover: #0b5573;
+  --accent-contrast: #ffffff;
+  --accent-subtle: #e0f0f6;
+  --link: #0f6b8f;
+  --success: #16722f;
+  --success-subtle: #dcf5e3;
+  --warning: #8a5a00;
+  --warning-subtle: #fbf0d2;
+  --danger: #c4262e;
+  --danger-subtle: #fde7e8;
+  --info: #0f6b8f;
+  --info-subtle: #e0f0f6;
+  --disabled-bg: #f0f2f4;
+  --disabled-text: #939ba4;
+  --focus: #0f6b8f;
+
+  /* type */
+  --font-display: "Hanken Grotesk", system-ui, sans-serif;
+  --font-body: "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --fs-xs: 0.75rem; /* 12px */
+  --fs-sm: 0.875rem; /* 14px */
+  --fs-base: 1rem; /* 16px */
+  --fs-lg: 1.125rem; /* 18px */
+  --fs-xl: 1.25rem; /* 20px */
+  --fs-2xl: 1.5rem; /* 24px */
+  --fs-3xl: 1.875rem; /* 30px */
+  --fs-4xl: 2.375rem; /* 38px */
+  --weight-display: 700;
+  --lh-tight: 1.2;
+  --lh-snug: 1.35;
+  --lh-body: 1.7;
+  --measure: 72ch;
+
+  /* space */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.5rem; /* 24px */
+  --space-6: 2rem; /* 32px */
+  --space-7: 3rem; /* 48px */
+  --space-8: 4rem; /* 64px */
+  --space-9: 6rem; /* 96px */
+  --space-10: 8rem; /* 128px */
+
+  /* shape */
+  --control-h: 2.75rem; /* 44px */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+  --shadow-1: 0 1px 2px rgb(27 31 36 / 0.05);
+  --shadow-2: 0 8px 24px rgb(27 31 36 / 0.08);
+
+  /* motion */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 600px) {
+  :root {
+    --fs-3xl: 1.625rem; /* 26px */
+    --fs-4xl: 1.875rem; /* 30px */
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101418;
+    --surface: #161b21;
+    --surface-2: #1e252c;
+    --text: #e3e8ed;
+    --text-muted: #9aa5b1;
+    --border: #2c343d;
+    --accent: #5cc0e6;
+    --accent-hover: #84d0ee;
+    --accent-contrast: #101418;
+    --accent-subtle: #12303c;
+    --link: #5cc0e6;
+    --success: #5fd08a;
+    --success-subtle: #13281b;
+    --warning: #e5b75a;
+    --warning-subtle: #2d2615;
+    --danger: #ff7b82;
+    --danger-subtle: #33191b;
+    --info: #5cc0e6;
+    --info-subtle: #12303c;
+    --disabled-bg: #1e252c;
+    --disabled-text: #5b6570;
+    --focus: #5cc0e6;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #101418;
+  --surface: #161b21;
+  --surface-2: #1e252c;
+  --text: #e3e8ed;
+  --text-muted: #9aa5b1;
+  --border: #2c343d;
+  --accent: #5cc0e6;
+  --accent-hover: #84d0ee;
+  --accent-contrast: #101418;
+  --accent-subtle: #12303c;
+  --link: #5cc0e6;
+  --success: #5fd08a;
+  --success-subtle: #13281b;
+  --warning: #e5b75a;
+  --warning-subtle: #2d2615;
+  --danger: #ff7b82;
+  --danger-subtle: #33191b;
+  --info: #5cc0e6;
+  --info-subtle: #12303c;
+  --disabled-bg: #1e252c;
+  --disabled-text: #5b6570;
+  --focus: #5cc0e6;
+}

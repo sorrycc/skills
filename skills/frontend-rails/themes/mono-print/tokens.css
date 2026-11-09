@@ -1,0 +1,137 @@
+/* Theme: mono-print
+   Fonts — put this in <head> before tokens.css:
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap">
+   Change values freely for the project. Keep the names. */
+:root {
+  color-scheme: light dark;
+
+  /* color roles */
+  --bg: #ffffff;
+  --surface: #f4f4f4;
+  --surface-2: #e9e9e9;
+  --text: #0a0a0a;
+  --text-muted: #505050;
+  --border: #0a0a0a;
+  --accent: #d6201f;
+  --accent-hover: #b01716;
+  --accent-contrast: #ffffff;
+  --accent-subtle: #fbe4e3;
+  --link: #0a0a0a;
+  --success: #1f6f2b;
+  --success-subtle: #e3f1e5;
+  --warning: #7a5600;
+  --warning-subtle: #f6edd3;
+  --danger: #c41c1b;
+  --danger-subtle: #fbe4e3;
+  --info: #0a0a0a;
+  --info-subtle: #e9e9e9;
+  --disabled-bg: #e9e9e9;
+  --disabled-text: #8a8a8a;
+  --focus: #0a0a0a;
+
+  /* type */
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-body: "Archivo", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, monospace;
+  --fs-xs: 0.75rem; /* 12px */
+  --fs-sm: 0.875rem; /* 14px */
+  --fs-base: 1rem; /* 16px */
+  --fs-lg: 1.25rem; /* 20px */
+  --fs-xl: 1.5rem; /* 24px */
+  --fs-2xl: 2rem; /* 32px */
+  --fs-3xl: 3rem; /* 48px */
+  --fs-4xl: 4.5rem; /* 72px */
+  --weight-display: 900;
+  --lh-tight: 1;
+  --lh-snug: 1.25;
+  --lh-body: 1.55;
+  --measure: 64ch;
+
+  /* space */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.5rem; /* 24px */
+  --space-6: 2rem; /* 32px */
+  --space-7: 3rem; /* 48px */
+  --space-8: 4rem; /* 64px */
+  --space-9: 6rem; /* 96px */
+  --space-10: 8rem; /* 128px */
+
+  /* shape */
+  --control-h: 2.75rem; /* 44px */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-full: 9999px;
+  --shadow-1: none;
+  --shadow-2: none;
+
+  /* motion */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 600px) {
+  :root {
+    --fs-3xl: 2rem; /* 32px */
+    --fs-4xl: 2.75rem; /* 44px */
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface-2: #1e1e1e;
+    --text: #f5f5f5;
+    --text-muted: #a3a3a3;
+    --border: #f5f5f5;
+    --accent: #ff4a3d;
+    --accent-hover: #ff6b60;
+    --accent-contrast: #0a0a0a;
+    --accent-subtle: #2c1210;
+    --link: #f5f5f5;
+    --success: #6fcf7c;
+    --success-subtle: #14261a;
+    --warning: #e8c05a;
+    --warning-subtle: #2a2412;
+    --danger: #ff5a4e;
+    --danger-subtle: #2c1210;
+    --info: #f5f5f5;
+    --info-subtle: #1e1e1e;
+    --disabled-bg: #1e1e1e;
+    --disabled-text: #5e5e5e;
+    --focus: #f5f5f5;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-2: #1e1e1e;
+  --text: #f5f5f5;
+  --text-muted: #a3a3a3;
+  --border: #f5f5f5;
+  --accent: #ff4a3d;
+  --accent-hover: #ff6b60;
+  --accent-contrast: #0a0a0a;
+  --accent-subtle: #2c1210;
+  --link: #f5f5f5;
+  --success: #6fcf7c;
+  --success-subtle: #14261a;
+  --warning: #e8c05a;
+  --warning-subtle: #2a2412;
+  --danger: #ff5a4e;
+  --danger-subtle: #2c1210;
+  --info: #f5f5f5;
+  --info-subtle: #1e1e1e;
+  --disabled-bg: #1e1e1e;
+  --disabled-text: #5e5e5e;
+  --focus: #f5f5f5;
+}

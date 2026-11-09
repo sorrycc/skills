@@ -1,0 +1,137 @@
+/* Theme: warm-craft
+   Fonts — put this in <head> before tokens.css:
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Nunito+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400&display=swap">
+   Change values freely for the project. Keep the names. */
+:root {
+  color-scheme: light dark;
+
+  /* color roles */
+  --bg: #fbf6ef;
+  --surface: #fffaf3;
+  --surface-2: #f3e9db;
+  --text: #2b2118;
+  --text-muted: #6b5a4a;
+  --border: #e2d3bf;
+  --accent: #b4532a;
+  --accent-hover: #963f1c;
+  --accent-contrast: #fffaf3;
+  --accent-subtle: #f6e0d2;
+  --link: #a34a24;
+  --success: #3d6b2f;
+  --success-subtle: #e4eedb;
+  --warning: #8c5b00;
+  --warning-subtle: #f7e8c8;
+  --danger: #a32a2a;
+  --danger-subtle: #f7dcd8;
+  --info: #2d5f7a;
+  --info-subtle: #dceaf0;
+  --disabled-bg: #ece2d4;
+  --disabled-text: #a39482;
+  --focus: #b4532a;
+
+  /* type */
+  --font-display: "Young Serif", system-ui, sans-serif;
+  --font-body: "Nunito Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --fs-xs: 0.75rem; /* 12px */
+  --fs-sm: 0.875rem; /* 14px */
+  --fs-base: 1rem; /* 16px */
+  --fs-lg: 1.125rem; /* 18px */
+  --fs-xl: 1.375rem; /* 22px */
+  --fs-2xl: 1.75rem; /* 28px */
+  --fs-3xl: 2.25rem; /* 36px */
+  --fs-4xl: 3rem; /* 48px */
+  --weight-display: 400;
+  --lh-tight: 1.15;
+  --lh-snug: 1.35;
+  --lh-body: 1.65;
+  --measure: 66ch;
+
+  /* space */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.5rem; /* 24px */
+  --space-6: 2rem; /* 32px */
+  --space-7: 3rem; /* 48px */
+  --space-8: 4rem; /* 64px */
+  --space-9: 6rem; /* 96px */
+  --space-10: 8rem; /* 128px */
+
+  /* shape */
+  --control-h: 2.75rem; /* 44px */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+  --shadow-1: 0 1px 2px rgb(43 33 24 / 0.08);
+  --shadow-2: 0 10px 30px rgb(43 33 24 / 0.10);
+
+  /* motion */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 600px) {
+  :root {
+    --fs-3xl: 1.75rem; /* 28px */
+    --fs-4xl: 2.25rem; /* 36px */
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1611;
+    --surface: #241d17;
+    --surface-2: #2f271f;
+    --text: #f1e6d8;
+    --text-muted: #b3a28e;
+    --border: #3d3329;
+    --accent: #e08a5c;
+    --accent-hover: #eaa07a;
+    --accent-contrast: #1b1611;
+    --accent-subtle: #3b2519;
+    --link: #e08a5c;
+    --success: #9ccc85;
+    --success-subtle: #232e1c;
+    --warning: #e6b866;
+    --warning-subtle: #352a17;
+    --danger: #f08f84;
+    --danger-subtle: #3b1f1b;
+    --info: #8fc0da;
+    --info-subtle: #1c2b33;
+    --disabled-bg: #2f271f;
+    --disabled-text: #6e6253;
+    --focus: #e08a5c;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #1b1611;
+  --surface: #241d17;
+  --surface-2: #2f271f;
+  --text: #f1e6d8;
+  --text-muted: #b3a28e;
+  --border: #3d3329;
+  --accent: #e08a5c;
+  --accent-hover: #eaa07a;
+  --accent-contrast: #1b1611;
+  --accent-subtle: #3b2519;
+  --link: #e08a5c;
+  --success: #9ccc85;
+  --success-subtle: #232e1c;
+  --warning: #e6b866;
+  --warning-subtle: #352a17;
+  --danger: #f08f84;
+  --danger-subtle: #3b1f1b;
+  --info: #8fc0da;
+  --info-subtle: #1c2b33;
+  --disabled-bg: #2f271f;
+  --disabled-text: #6e6253;
+  --focus: #e08a5c;
+}

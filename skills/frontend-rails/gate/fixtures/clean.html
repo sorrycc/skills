@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hearth Roasters</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Nunito+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400&display=swap">
+  <link rel="stylesheet" href="../../themes/warm-craft/tokens.css">
+  <link rel="stylesheet" href="../../components/primitives.css">
+  <style>
+    .hero { padding-block: var(--space-8) var(--space-7); }
+    .hero h1 { max-width: 14ch; }
+    .photo { aspect-ratio: 4 / 3; border-radius: var(--radius-lg); background: var(--surface-2); display: grid; place-items: center; color: var(--text-muted); }
+    .steps { counter-reset: step; list-style: none; padding: 0; display: grid; gap: var(--space-5); }
+    .steps li { display: grid; grid-template-columns: var(--space-7) 1fr; gap: var(--space-4); }
+    .steps li::before { counter-increment: step; content: counter(step); font-family: var(--font-display); font-size: var(--fs-2xl); color: var(--accent); }
+    details { border-bottom: 1px solid var(--border); padding-block: var(--space-4); }
+    summary { cursor: pointer; font-weight: 600; min-height: var(--control-h); display: flex; align-items: center; }
+  </style>
+</head>
+<body>
+  <header class="container nav">
+    <a href="./clean.html"><strong>Hearth Roasters</strong></a>
+    <ul>
+      <li><a href="#beans">Beans</a></li>
+      <li><a href="#plans">Plans</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ul>
+  </header>
+
+  <main>
+    <section class="container hero split">
+      <div class="stack">
+        <h1>Coffee roasted on Tuesday, at your door by Friday.</h1>
+        <p class="lead">We roast small batches in Leeds and ship them the same week. Pick a plan, pause whenever you like.</p>
+        <div class="cluster">
+          <a class="btn btn-primary" href="#plans">See plans</a>
+          <a class="btn" href="#beans">This month's beans</a>
+        </div>
+      </div>
+      <div class="photo" role="img" aria-label="Roaster at work">Photo: the roaster at work</div>
+    </section>
+
+    <section id="beans" class="container section">
+      <div class="split">
+        <div class="stack">
+          <h2>How a bag gets to you</h2>
+          <p class="muted">No warehouse, no shelf time.</p>
+        </div>
+        <ol class="steps">
+          <li><div class="stack-sm"><h3>We buy green beans directly</h3><p class="muted">From four farms we have worked with for six years.</p></div></li>
+          <li><div class="stack-sm"><h3>We roast on Tuesday</h3><p class="muted">Light to medium, rested for two days before packing.</p></div></li>
+          <li><div class="stack-sm"><h3>Royal Mail on Wednesday</h3><p class="muted">Letterbox-sized bags, so nobody has to be home.</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="plans" class="container section stack">
+      <h2>Plans</h2>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Plan</th><th class="num">Bags / month</th><th class="num">Price</th></tr></thead>
+          <tbody>
+            <tr><td>Solo</td><td class="num">2</td><td class="num">£18.00</td></tr>
+            <tr><td>Household</td><td class="num">4</td><td class="num">£32.00</td></tr>
+            <tr><td>Office</td><td class="num">10</td><td class="num">£70.00</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <form class="card stack" action="./clean.html">
+        <h3>Start with one bag</h3>
+        <div class="field">
+          <label for="email">Email</label>
+          <input class="input" id="email" type="email" required>
+          <span class="hint">We send one email per roast.</span>
+        </div>
+        <label class="check"><input type="checkbox" checked> Whole beans</label>
+        <div><button class="btn btn-primary" type="submit">Order a bag</button></div>
+      </form>
+    </section>
+
+    <section id="faq" class="container section">
+      <div class="prose">
+        <h2>Questions</h2>
+        <details><summary>Can I skip a month?</summary><p class="muted">Yes. Skip from your account page up to Monday night before the roast.</p></details>
+        <details><summary>Do you ship outside the UK?</summary><p class="muted">Not yet. We are working on Ireland first.</p></details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container cluster">
+      <span>© 2026 Hearth Roasters, Leeds</span>
+      <a href="mailto:hello@example.com">hello@example.com</a>
+    </div>
+  </footer>
+</body>
+</html>

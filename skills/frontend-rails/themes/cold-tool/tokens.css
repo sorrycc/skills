@@ -1,0 +1,137 @@
+/* Theme: cold-tool
+   Fonts — put this in <head> before tokens.css:
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+   Change values freely for the project. Keep the names. */
+:root {
+  color-scheme: light dark;
+
+  /* color roles */
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef0f3;
+  --text: #0f1419;
+  --text-muted: #57606a;
+  --border: #d8dde3;
+  --accent: #1a63d6;
+  --accent-hover: #1552b3;
+  --accent-contrast: #ffffff;
+  --accent-subtle: #e3edfc;
+  --link: #1a63d6;
+  --success: #1a7f37;
+  --success-subtle: #dafbe1;
+  --warning: #9a6700;
+  --warning-subtle: #fff8c5;
+  --danger: #cf222e;
+  --danger-subtle: #ffebe9;
+  --info: #0969da;
+  --info-subtle: #ddf4ff;
+  --disabled-bg: #eef0f3;
+  --disabled-text: #8c959f;
+  --focus: #1a63d6;
+
+  /* type */
+  --font-display: "IBM Plex Sans", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --fs-xs: 0.75rem; /* 12px */
+  --fs-sm: 0.8125rem; /* 13px */
+  --fs-base: 0.875rem; /* 14px */
+  --fs-lg: 1rem; /* 16px */
+  --fs-xl: 1.125rem; /* 18px */
+  --fs-2xl: 1.375rem; /* 22px */
+  --fs-3xl: 1.75rem; /* 28px */
+  --fs-4xl: 2.25rem; /* 36px */
+  --weight-display: 600;
+  --lh-tight: 1.2;
+  --lh-snug: 1.35;
+  --lh-body: 1.5;
+  --measure: 72ch;
+
+  /* space */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem; /* 24px */
+  --space-7: 2rem; /* 32px */
+  --space-8: 3rem; /* 48px */
+  --space-9: 4rem; /* 64px */
+  --space-10: 6rem; /* 96px */
+
+  /* shape */
+  --control-h: 2.75rem; /* 44px */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-full: 9999px;
+  --shadow-1: 0 1px 2px rgb(15 20 25 / 0.06);
+  --shadow-2: 0 6px 20px rgb(15 20 25 / 0.10);
+
+  /* motion */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 600px) {
+  :root {
+    --fs-3xl: 1.5rem; /* 24px */
+    --fs-4xl: 1.75rem; /* 28px */
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117;
+    --surface: #151b23;
+    --surface-2: #1f2630;
+    --text: #e6edf3;
+    --text-muted: #9198a1;
+    --border: #30363d;
+    --accent: #4c8dff;
+    --accent-hover: #6ea2ff;
+    --accent-contrast: #0d1117;
+    --accent-subtle: #13233d;
+    --link: #6ea2ff;
+    --success: #3fb950;
+    --success-subtle: #12261a;
+    --warning: #d29922;
+    --warning-subtle: #2b2111;
+    --danger: #f85149;
+    --danger-subtle: #2d1517;
+    --info: #58a6ff;
+    --info-subtle: #10233a;
+    --disabled-bg: #1f2630;
+    --disabled-text: #59616b;
+    --focus: #4c8dff;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0d1117;
+  --surface: #151b23;
+  --surface-2: #1f2630;
+  --text: #e6edf3;
+  --text-muted: #9198a1;
+  --border: #30363d;
+  --accent: #4c8dff;
+  --accent-hover: #6ea2ff;
+  --accent-contrast: #0d1117;
+  --accent-subtle: #13233d;
+  --link: #6ea2ff;
+  --success: #3fb950;
+  --success-subtle: #12261a;
+  --warning: #d29922;
+  --warning-subtle: #2b2111;
+  --danger: #f85149;
+  --danger-subtle: #2d1517;
+  --info: #58a6ff;
+  --info-subtle: #10233a;
+  --disabled-bg: #1f2630;
+  --disabled-text: #59616b;
+  --focus: #4c8dff;
+}

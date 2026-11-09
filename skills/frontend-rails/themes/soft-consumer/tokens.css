@@ -1,0 +1,137 @@
+/* Theme: soft-consumer
+   Fonts — put this in <head> before tokens.css:
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=DM+Mono:wght@400&display=swap">
+   Change values freely for the project. Keep the names. */
+:root {
+  color-scheme: light dark;
+
+  /* color roles */
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --surface-2: #f1f4ef;
+  --text: #1f2a24;
+  --text-muted: #56635b;
+  --border: #dfe5dc;
+  --accent: #c8492a;
+  --accent-hover: #a93b20;
+  --accent-contrast: #ffffff;
+  --accent-subtle: #fde6dd;
+  --link: #b2401f;
+  --success: #276b4d;
+  --success-subtle: #e1f0e8;
+  --warning: #8a5a00;
+  --warning-subtle: #fbefd2;
+  --danger: #b42318;
+  --danger-subtle: #fde4e1;
+  --info: #2563a8;
+  --info-subtle: #e0ecf8;
+  --disabled-bg: #eef0ec;
+  --disabled-text: #9aa39d;
+  --focus: #c8492a;
+
+  /* type */
+  --font-display: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: "Figtree", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+  --fs-xs: 0.75rem; /* 12px */
+  --fs-sm: 0.875rem; /* 14px */
+  --fs-base: 1rem; /* 16px */
+  --fs-lg: 1.125rem; /* 18px */
+  --fs-xl: 1.375rem; /* 22px */
+  --fs-2xl: 1.75rem; /* 28px */
+  --fs-3xl: 2.25rem; /* 36px */
+  --fs-4xl: 3rem; /* 48px */
+  --weight-display: 700;
+  --lh-tight: 1.1;
+  --lh-snug: 1.3;
+  --lh-body: 1.6;
+  --measure: 64ch;
+
+  /* space */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.5rem; /* 24px */
+  --space-6: 2rem; /* 32px */
+  --space-7: 3rem; /* 48px */
+  --space-8: 4rem; /* 64px */
+  --space-9: 6rem; /* 96px */
+  --space-10: 8rem; /* 128px */
+
+  /* shape */
+  --control-h: 2.75rem; /* 44px */
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+  --shadow-1: 0 1px 3px rgb(31 42 36 / 0.06);
+  --shadow-2: 0 12px 32px rgb(31 42 36 / 0.10);
+
+  /* motion */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 600px) {
+  :root {
+    --fs-3xl: 1.75rem; /* 28px */
+    --fs-4xl: 2.125rem; /* 34px */
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171a;
+    --surface: #1c2024;
+    --surface-2: #252a2f;
+    --text: #eef1ee;
+    --text-muted: #a7b0aa;
+    --border: #333a40;
+    --accent: #ff8a68;
+    --accent-hover: #ffa186;
+    --accent-contrast: #14171a;
+    --accent-subtle: #3a2219;
+    --link: #ff8a68;
+    --success: #7dd3a8;
+    --success-subtle: #16291f;
+    --warning: #f0c060;
+    --warning-subtle: #2f2716;
+    --danger: #ff8b80;
+    --danger-subtle: #351c1a;
+    --info: #82b6ec;
+    --info-subtle: #162536;
+    --disabled-bg: #252a2f;
+    --disabled-text: #5f6862;
+    --focus: #ff8a68;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #14171a;
+  --surface: #1c2024;
+  --surface-2: #252a2f;
+  --text: #eef1ee;
+  --text-muted: #a7b0aa;
+  --border: #333a40;
+  --accent: #ff8a68;
+  --accent-hover: #ffa186;
+  --accent-contrast: #14171a;
+  --accent-subtle: #3a2219;
+  --link: #ff8a68;
+  --success: #7dd3a8;
+  --success-subtle: #16291f;
+  --warning: #f0c060;
+  --warning-subtle: #2f2716;
+  --danger: #ff8b80;
+  --danger-subtle: #351c1a;
+  --info: #82b6ec;
+  --info-subtle: #162536;
+  --disabled-bg: #252a2f;
+  --disabled-text: #5f6862;
+  --focus: #ff8a68;
+}

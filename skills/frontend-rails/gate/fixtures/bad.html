@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bad page — should fail every rule</title>
+  <link rel="stylesheet" href="../../themes/cold-tool/tokens.css">
+  <style>
+    /* no primitives.css, no reduced-motion rule */
+    body { font-family: Georgia, serif; }                                   /* R02 */
+    .hero { background: linear-gradient(135deg, #3b82f6, #8b5cf6); padding: 37px; } /* R04 R12 */
+    .grad { background: linear-gradient(90deg, #f00, #00f); -webkit-background-clip: text; background-clip: text; color: transparent; } /* R03 */
+    .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; } /* R06 */
+    .cards { display: flex; gap: 16px; }
+    .cards > div { flex: 1; border: 1px solid #ddd; border-radius: 12px; padding: 16px; } /* R01 R05 */
+    .inner { border: 1px solid #ddd; border-radius: 12px; padding: 16px; height: 80px; } /* R05 R15 */
+    .faint { color: #bbb; }                                                  /* R09 R01 */
+    .odd-size { font-size: 15px; }                                           /* R13 */
+    .tiny-btn { padding: 2px 4px; font-size: 12px; }                        /* R10 */
+    .wide { width: 900px; }                                                  /* R11 */
+    .grow { transition: width 600ms ease; }                                  /* R16 */
+    .fly { animation: fly 900ms ease both; animation-delay: 100ms; }        /* R16 */
+    @keyframes fly { from { top: 40px; position: relative; } to { top: 0; } }
+    .long { max-width: none; }                                               /* R14 */
+    .glass { backdrop-filter: blur(8px); }                                   /* BAN via DESIGN.md */
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <p class="eyebrow">New</p><h1 class="grad">Supercharge your workflow</h1>
+    <p class="eyebrow">Fast</p><h2>Built for speed</h2>
+    <p class="eyebrow">Simple</p><h2>Built for teams</h2>
+    <button>🚀 Get started</button>
+  </section>
+  <div class="cards">
+    <div><svg width="24" height="24"><circle cx="12" cy="12" r="10"/></svg><h3>Fast</h3><p>Lightning quick.</p><div class="inner">nested</div></div>
+    <div><svg width="24" height="24"><circle cx="12" cy="12" r="10"/></svg><h3>Secure</h3><p>Locked down.</p></div>
+    <div><svg width="24" height="24"><circle cx="12" cy="12" r="10"/></svg><h3>Scalable</h3><p>Grows with you.</p></div>
+  </div>
+  <p class="faint odd-size">Low contrast text in an odd size.</p>
+  <p class="long">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+  <a href="#">Learn more</a>
+  <button class="tiny-btn">x</button>
+  <div class="wide">This box is wider than a phone.</div>
+  <div class="grow fly glass">Animated badly</div>
+  <img src="missing.png" alt="missing">
+  <table><tr><td>Revenue</td><td>1,234</td></tr><tr><td>Cost</td><td>567</td></tr></table>
+</body>
+</html>

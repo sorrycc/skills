@@ -1,0 +1,137 @@
+/* Theme: editorial-ink
+   Fonts — put this in <head> before tokens.css:
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+   Change values freely for the project. Keep the names. */
+:root {
+  color-scheme: light dark;
+
+  /* color roles */
+  --bg: #f7f4ee;
+  --surface: #fffdf9;
+  --surface-2: #efe9df;
+  --text: #1c1a17;
+  --text-muted: #5f5950;
+  --border: #d9d1c4;
+  --accent: #a3341f;
+  --accent-hover: #872a18;
+  --accent-contrast: #fffdf9;
+  --accent-subtle: #f5e3dc;
+  --link: #a3341f;
+  --success: #2f6b3a;
+  --success-subtle: #e3efe2;
+  --warning: #8a5a00;
+  --warning-subtle: #f6ead0;
+  --danger: #a61b29;
+  --danger-subtle: #f7dfe0;
+  --info: #1f5a85;
+  --info-subtle: #dde9f2;
+  --disabled-bg: #e8e3da;
+  --disabled-text: #9a9286;
+  --focus: #a3341f;
+
+  /* type */
+  --font-display: "Newsreader", Georgia, serif;
+  --font-body: "Public Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --fs-xs: 0.75rem; /* 12px */
+  --fs-sm: 0.875rem; /* 14px */
+  --fs-base: 1rem; /* 16px */
+  --fs-lg: 1.125rem; /* 18px */
+  --fs-xl: 1.375rem; /* 22px */
+  --fs-2xl: 1.75rem; /* 28px */
+  --fs-3xl: 2.5rem; /* 40px */
+  --fs-4xl: 3.5rem; /* 56px */
+  --weight-display: 500;
+  --lh-tight: 1.1;
+  --lh-snug: 1.3;
+  --lh-body: 1.65;
+  --measure: 68ch;
+
+  /* space */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.5rem; /* 24px */
+  --space-6: 2rem; /* 32px */
+  --space-7: 3rem; /* 48px */
+  --space-8: 4rem; /* 64px */
+  --space-9: 6rem; /* 96px */
+  --space-10: 8rem; /* 128px */
+
+  /* shape */
+  --control-h: 2.75rem; /* 44px */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+  --shadow-1: 0 1px 2px rgb(28 26 23 / 0.06);
+  --shadow-2: 0 8px 24px rgb(28 26 23 / 0.08);
+
+  /* motion */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 600px) {
+  :root {
+    --fs-3xl: 2rem; /* 32px */
+    --fs-4xl: 2.5rem; /* 40px */
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161412;
+    --surface: #1f1c19;
+    --surface-2: #2a2622;
+    --text: #ede7dc;
+    --text-muted: #a89f92;
+    --border: #3a342e;
+    --accent: #e0765c;
+    --accent-hover: #ea8d76;
+    --accent-contrast: #161412;
+    --accent-subtle: #3a221b;
+    --link: #e0765c;
+    --success: #7cc48a;
+    --success-subtle: #1d2e20;
+    --warning: #e0b45a;
+    --warning-subtle: #33281a;
+    --danger: #f0808a;
+    --danger-subtle: #3a1d20;
+    --info: #7fb4dd;
+    --info-subtle: #1a2a36;
+    --disabled-bg: #2a2622;
+    --disabled-text: #6b645b;
+    --focus: #e0765c;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #161412;
+  --surface: #1f1c19;
+  --surface-2: #2a2622;
+  --text: #ede7dc;
+  --text-muted: #a89f92;
+  --border: #3a342e;
+  --accent: #e0765c;
+  --accent-hover: #ea8d76;
+  --accent-contrast: #161412;
+  --accent-subtle: #3a221b;
+  --link: #e0765c;
+  --success: #7cc48a;
+  --success-subtle: #1d2e20;
+  --warning: #e0b45a;
+  --warning-subtle: #33281a;
+  --danger: #f0808a;
+  --danger-subtle: #3a1d20;
+  --info: #7fb4dd;
+  --info-subtle: #1a2a36;
+  --disabled-bg: #2a2622;
+  --disabled-text: #6b645b;
+  --focus: #e0765c;
+}
