@@ -7,22 +7,44 @@
   <link rel="stylesheet" href="../../themes/cold-tool/tokens.css">
   <style>
     /* no primitives.css, no reduced-motion rule */
-    body { font-family: Georgia, serif; }                                   /* R02 */
+    body { font-family: Georgia, serif; cursor: none; }                      /* R02 B11 */
     .hero { background: linear-gradient(135deg, #3b82f6, #8b5cf6); padding: 37px; } /* R04 R12 */
     .grad { background: linear-gradient(90deg, #f00, #00f); -webkit-background-clip: text; background-clip: text; color: transparent; } /* R03 */
     .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; } /* R06 */
     .cards { display: flex; gap: 16px; }
-    .cards > div { flex: 1; border: 1px solid #ddd; border-radius: 12px; padding: 16px; } /* R01 R05 */
+    .cards > div { flex: 1; border: 1px solid #ddd; border-radius: 12px; padding: 16px; box-shadow: 0 12px 40px rgb(0 0 0 / 0.2); } /* R01 R05 R20 */
     .inner { border: 1px solid #ddd; border-radius: 12px; padding: 16px; height: 80px; } /* R05 R15 */
     .faint { color: #bbb; }                                                  /* R09 R01 */
     .odd-size { font-size: 15px; }                                           /* R13 */
+    .s1 { font-size: 11px; } .s2 { font-size: 17px; } .s3 { font-size: 21px; } /* R19 */
     .tiny-btn { padding: 2px 4px; font-size: 12px; }                        /* R10 */
     .wide { width: 900px; }                                                  /* R11 */
     .grow { transition: width 600ms ease; }                                  /* R16 */
-    .fly { animation: fly 900ms ease both; animation-delay: 100ms; }        /* R16 */
+    .fly { animation: fly 900ms ease both; animation-delay: 100ms; }        /* R16 M06 */
     @keyframes fly { from { top: 40px; position: relative; } to { top: 0; } }
     .long { max-width: none; }                                               /* R14 */
-    .glass { backdrop-filter: blur(8px); }                                   /* BAN via DESIGN.md */
+    .glass { backdrop-filter: blur(8px); }                                   /* BAN via DESIGN.md, R20 */
+
+    /* motion */
+    .lazy { transition: all 200ms ease-in; }                                 /* R16 all + ease-in */
+    @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } } /* M03 */
+    .popper:hover { animation: pop 200ms; }                                  /* M04 */
+    .palette a { transition: color 120ms ease; }                             /* M01 */
+    tbody tr { transition: transform 300ms ease-out; }                       /* M02 */
+    #centre-pop { transform: scale(0.9); transition: transform 200ms ease-out; } /* M05 */
+
+    /* behaviour */
+    .shifty:hover { font-weight: 700; padding: 12px; }                       /* B01 */
+    .crowd { display: flex; width: 260px; }
+    .crowd span { flex: 1; overflow: hidden; white-space: nowrap; }
+    .crowd button { display: none; }
+    .crowd:hover button { display: block; }                                  /* B02 */
+    .lane:hover .runaway { transform: translateX(240px); }                   /* B03 */
+    .flat { all: unset; }                                                    /* B04 */
+    :focus-visible { outline: none; }                                        /* B13 */
+    .reveal { opacity: 0; height: 300px; transition: opacity 250ms ease-out; } /* B10 */
+    .panel { border: 1px solid #ddd; padding: 16px; }
+    .fixed-cell { display: block; width: 120px; white-space: nowrap; }       /* K02 after the break pass */
   </style>
 </head>
 <body>
@@ -42,8 +64,63 @@
   <a href="#">Learn more</a>
   <button class="tiny-btn">x</button>
   <div class="wide">This box is wider than a phone.</div>
-  <div class="grow fly glass">Animated badly</div>
+  <div class="grow fly glass lazy">Animated badly</div>
   <img src="missing.png" alt="missing">
-  <table><tr><td>Revenue</td><td>1,234</td></tr><tr><td>Cost</td><td>567</td></tr></table>
+  <table><tbody><tr><td>Revenue</td><td>1,234</td></tr><tr><td>Cost</td><td>567</td></tr><tr><td><span class="fixed-cell" data-break>Ada Lovelace</span></td><td>8</td></tr></tbody></table>
+
+  <!-- copy -->
+  <p class="s1">Last seen 340 days ago</p>                                   <!-- C03 -->
+  <p class="s2">1 members online</p>                                         <!-- C04 -->
+  <p class="s3">Docs · Pricing · Blog · Careers</p>                         <!-- C08 -->
+  <button>Delete</button> <button>Remove</button>                            <!-- C01 (DESIGN.md picks "delete") -->
+  <button>SUBMIT</button>                                                    <!-- C02 -->
+  <button>Buy now</button>                                                   <!-- C05, BAN (ban-text) -->
+  <button><svg width="16" height="16"><circle cx="8" cy="8" r="6"/></svg></button> <!-- C06 -->
+  <input placeholder="Email">                                                <!-- C09 -->
+  <h3>Reports</h3><p>See all your reports here.</p>                          <!-- C07: every heading explained -->
+  <h3>Billing</h3><p>Manage your billing here.</p>
+  <h3>Team</h3><p>Manage your team here.</p>
+
+  <!-- motion -->
+  <div class="popper">Hover me</div>
+  <nav class="palette" data-freq="constant"><a href="./bad.html">Go to file</a></nav>
+  <div id="centre-pop" popover>Popover</div>
+
+  <!-- behaviour -->
+  <button class="shifty">Grows on hover</button>
+  <div class="crowd" role="button" tabindex="0"><span>Animate the onboarding checklist</span><button>Archive</button></div>
+  <div class="lane"><button class="runaway">Catch me</button></div>
+  <button class="flat">No pressed state</button>
+  <div onclick="void 0">Open settings</div>                                  <!-- B07 -->
+  <a onclick="void 0">Pricing</a>                                            <!-- B08 -->
+  <button onclick="location.href='./bad.html'">Docs</button>                 <!-- B08 -->
+  <button tabindex="3">Jump the queue</button>                               <!-- B14 -->
+  <button id="slow" aria-expanded="false">Slow menu</button>                 <!-- B05 -->
+  <button id="jumpy" aria-expanded="false">Jumpy toggle</button>             <!-- B06 -->
+  <button id="sticky" aria-expanded="false">Sticky menu</button>             <!-- B12 -->
+  <div id="sticky-menu" role="menu" hidden>Can't Escape this</div>
+  <div id="slow-menu" hidden>Late</div>
+
+  <!-- states -->
+  <section data-states="filled loading error" data-state="filled">           <!-- S04 S05 -->
+    <div class="panel" data-when="filled">Twelve rows of data</div>
+    <div data-when="loading" hidden>Loading…</div>
+    <div data-when="error" hidden>Oops</div>
+  </section>
+
+  <div class="reveal">Section one</div>
+  <div class="reveal">Section two</div>
+  <div class="reveal">Section three</div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    $('slow').onclick = () => setTimeout(() => { $('slow-menu').hidden = false; }, 400);
+    $('jumpy').onclick = () => { $('jumpy').before(Object.assign(document.createElement('p'), { textContent: 'Saved!' })); $('jumpy').setAttribute('aria-expanded', 'true'); };
+    $('sticky').onclick = () => { $('sticky-menu').hidden = false; $('sticky').setAttribute('aria-expanded', 'true'); };
+    new MutationObserver(() => {
+      for (const el of document.querySelectorAll('[data-when]')) el.hidden = el.dataset.when !== el.parentElement.dataset.state;
+    }).observe(document.querySelector('[data-states]'), { attributes: true });
+    addEventListener('wheel', (e) => e.preventDefault(), { passive: false }); /* B09 */
+  </script>
 </body>
 </html>

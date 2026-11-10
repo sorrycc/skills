@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deploys — Harbor</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="../../themes/cold-tool/tokens.css">
+  <link rel="stylesheet" href="../../components/primitives.css">
+  <style>
+    .page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4); }
+    .skeleton-row { height: var(--space-7); }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-3); }
+  </style>
+</head>
+<body>
+  <header class="container nav">
+    <a href="./app.html"><strong>Harbor</strong></a>
+    <ul>
+      <li><a href="./app.html">Deploys</a></li>
+      <li><a href="./app.html#logs">Logs</a></li>
+      <li><a href="./app.html#team">Team</a></li>
+    </ul>
+  </header>
+
+  <main class="container section stack">
+    <div class="page-head">
+      <h1>Deploys</h1>
+      <div class="cluster" role="toolbar" aria-label="Deploy actions">
+        <button class="icon-btn" aria-label="Refresh" data-tip="Refresh">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+        </button>
+        <button class="btn" popovertarget="env-menu">Environment</button>
+        <div id="env-menu" popover class="menu">
+          <button class="menu-item">Production</button>
+          <button class="menu-item">Staging</button>
+          <button class="menu-item">Preview</button>
+        </div>
+        <button class="btn btn-primary" command="show-modal" commandfor="new-deploy">New deploy</button>
+      </div>
+    </div>
+
+    <section class="stack" data-states="filled loading empty error denied offline" data-state="filled">
+      <div class="table-wrap" data-when="filled offline">
+        <table class="table">
+          <thead><tr><th>Commit</th><th>Branch</th><th>Status</th><th class="num">Duration (s)</th><th>Started</th></tr></thead>
+          <tbody>
+            <tr><td>Fix retry on 502</td><td><code>main</code></td><td><span class="badge badge-success">Live</span></td><td class="num">42</td><td>3 min ago</td></tr>
+            <tr><td>Add invoice export</td><td><code>billing-export</code></td><td><span class="badge badge-info">Building</span></td><td class="num">118</td><td>9 min ago</td></tr>
+            <tr><td>Bump Node to 24</td><td><code>main</code></td><td><span class="badge badge-danger">Failed</span></td><td class="num">67</td><td>Yesterday, 17:40</td></tr>
+            <tr><td>Cache team avatars</td><td><code>perf-avatars</code></td><td><span class="badge badge-success">Live</span></td><td class="num">39</td><td>Yesterday, 11:05</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="stack-sm" data-when="loading" aria-busy="true" aria-label="Loading deploys">
+        <span class="skeleton skeleton-row"></span>
+        <span class="skeleton skeleton-row"></span>
+        <span class="skeleton skeleton-row"></span>
+        <span class="skeleton skeleton-row"></span>
+        <span class="skeleton skeleton-row"></span>
+      </div>
+
+      <div class="empty" data-when="empty">
+        <p>Nothing has been deployed from this project yet.</p>
+        <button class="btn btn-primary" command="show-modal" commandfor="new-deploy">New deploy</button>
+      </div>
+
+      <div class="alert alert-danger stack-sm" data-when="error" role="alert">
+        <p>Couldn't load deploys: the build service didn't answer in 10 seconds.</p>
+        <div class="cluster">
+          <button class="btn">Try again</button>
+          <a href="mailto:support@example.com?subject=Deploys%20not%20loading">Report this</a>
+        </div>
+      </div>
+
+      <div class="empty" data-when="denied">
+        <p>Deploys are visible to people with the Deployer role.</p>
+        <a class="btn" href="mailto:admin@example.com?subject=Deployer%20role">Ask an admin</a>
+      </div>
+
+      <div class="alert alert-warning cluster" data-when="offline" role="status">
+        <span>You're offline. This list was last updated at 14:02.</span>
+        <button class="btn">Try again</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="new-deploy" class="dialog" closedby="any" aria-labelledby="new-deploy-title">
+    <form class="stack" method="dialog">
+      <h3 id="new-deploy-title">New deploy</h3>
+      <div class="field">
+        <label for="branch">Branch</label>
+        <input class="input" id="branch" name="branch" value="main" required>
+      </div>
+      <label class="check"><input class="switch" type="checkbox" role="switch" name="migrate"> Run database migrations</label>
+      <div class="dialog-actions">
+        <button class="btn" type="button" command="close" commandfor="new-deploy">Cancel</button>
+        <button class="btn btn-primary" type="submit">Deploy</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

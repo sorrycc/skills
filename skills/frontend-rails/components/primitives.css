@@ -10,6 +10,7 @@ body {
   font-family: var(--font-body);
   font-size: var(--fs-base);
   line-height: var(--lh-body);
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
 }
 img, svg, video { display: block; max-width: 100%; height: auto; }
@@ -28,8 +29,8 @@ a:hover { text-decoration-thickness: 2px; }
 ::selection { background: var(--accent-subtle); color: var(--text); }
 
 h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); font-weight: var(--weight-display); line-height: var(--lh-tight); text-wrap: balance; }
-h1 { font-size: var(--fs-4xl); }
-h2 { font-size: var(--fs-3xl); }
+h1 { font-size: var(--fs-4xl); letter-spacing: -0.02em; }
+h2 { font-size: var(--fs-3xl); letter-spacing: -0.02em; }
 h3 { font-size: var(--fs-xl); line-height: var(--lh-snug); }
 h4 { font-size: var(--fs-lg); line-height: var(--lh-snug); }
 h5, h6 { font-size: var(--fs-base); line-height: var(--lh-snug); }
@@ -61,7 +62,7 @@ p { text-wrap: pretty; }
   border: 1px solid var(--border); border-radius: var(--radius-md);
   background: var(--surface); color: var(--text);
   font-size: var(--fs-base); font-weight: 500; text-decoration: none; white-space: nowrap;
-  transition: background-color var(--dur-fast) var(--ease-std), border-color var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-std);
+  transition: background-color var(--dur-fast) var(--ease-std), border-color var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-out);
 }
 .btn:hover { background: var(--surface-2); }
 .btn:active { transform: scale(0.97); }
@@ -86,6 +87,27 @@ textarea.input { padding: var(--space-3); min-height: 6rem; }
 .error-text { font-size: var(--fs-sm); color: var(--danger); }
 input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width: 1.125rem; height: 1.125rem; }
 .check { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control-h); }
+input.switch {
+  appearance: none; position: relative; flex-shrink: 0; width: 2.5rem; height: 1.5rem;
+  border-radius: var(--radius-full); background: var(--border); cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-std);
+}
+input.switch::before {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 1.25rem; height: 1.25rem;
+  border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-1);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+input.switch:checked { background: var(--accent); }
+input.switch:checked::before { transform: translateX(1rem); }
+input.switch:disabled { background: var(--disabled-bg); cursor: not-allowed; }
+.icon-btn {
+  display: inline-grid; place-items: center; flex-shrink: 0; width: var(--control-h); height: var(--control-h);
+  border-radius: var(--radius-md); color: var(--text-muted);
+  transition: background-color var(--dur-fast) var(--ease-std), transform var(--dur-fast) var(--ease-out);
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--text); }
+.icon-btn:active { transform: scale(0.96); }
+.icon-btn:disabled { color: var(--disabled-text); cursor: not-allowed; transform: none; }
 
 /* ---------- surfaces ---------- */
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-5); }
@@ -104,11 +126,87 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 .alert-warning { background: var(--warning-subtle); border-color: var(--warning); }
 .alert-danger { background: var(--danger-subtle); border-color: var(--danger); }
 .alert-info { background: var(--info-subtle); border-color: var(--info); }
+/* 1px inner edge so photos and screenshots don't melt into the page */
+.avatar, .frame { outline: 1px solid color-mix(in srgb, var(--text) 10%, transparent); outline-offset: -1px; }
+.avatar { flex-shrink: 0; width: var(--space-7); height: var(--space-7); border-radius: 50%; object-fit: cover; }
+.frame { border-radius: var(--radius-md); }
+
+/* ---------- overlays (native popover and <dialog>, no JS needed) ---------- */
+.menu, .toast, .dialog, .drawer { border: 1px solid var(--border); background: var(--surface); color: var(--text); box-shadow: var(--shadow-2); }
+/* Enter takes --dur-base, exit takes --dur-fast. Transitions, so a fast re-click interrupts cleanly. */
+.menu, .toast, .dialog {
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out),
+    display var(--dur-fast) allow-discrete, overlay var(--dur-fast) allow-discrete;
+}
+.menu:popover-open, .toast:popover-open, .dialog[open] { opacity: 1; transform: none; transition-duration: var(--dur-base); }
+
+/* <button popovertarget="m">…</button> <div id="m" popover class="menu">…</div> — grows from the trigger */
+.menu {
+  position: absolute; inset: auto; margin: var(--space-1) 0 0;
+  top: anchor(bottom); left: anchor(left); position-try-fallbacks: flip-block, flip-inline;
+  min-width: 12rem; padding: var(--space-1); border-radius: var(--radius-md);
+  transform: scale(0.95); transform-origin: top left;
+}
+.menu-item {
+  display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: var(--control-h);
+  padding: 0 var(--space-3); border-radius: var(--radius-sm); color: var(--text); text-align: left; text-decoration: none;
+}
+.menu-item:hover, .menu-item:focus-visible { background: var(--surface-2); }
+
+/* <div popover="manual" class="toast" role="status"> — el.showPopover(), then hidePopover() after a few seconds */
+.toast {
+  position: fixed; inset: auto var(--space-4) var(--space-4) auto; margin: 0;
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); transform: translateY(var(--space-3));
+}
+
+/* <button command="show-modal" commandfor="d">…</button> <dialog id="d" class="dialog" closedby="any"> — stays centered */
+.dialog { width: min(32rem, 100% - 2 * var(--space-4)); margin: auto; padding: var(--space-5); border-radius: var(--radius-lg); transform: scale(0.96); }
+/* <dialog class="drawer"> — slides in from the right edge */
+.drawer {
+  inset: 0 0 0 auto; margin: 0; width: min(24rem, 100%); height: 100dvh; max-height: none;
+  padding: var(--space-5); border-width: 0 0 0 1px; transform: translateX(100%);
+  transition: transform var(--dur-base) var(--ease-drawer), display var(--dur-base) allow-discrete, overlay var(--dur-base) allow-discrete;
+}
+.drawer[open] { transform: none; transition-duration: var(--dur-slow); }
+.dialog::backdrop, .drawer::backdrop {
+  background: rgb(0 0 0 / 0.4); opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out), display var(--dur-fast) allow-discrete, overlay var(--dur-fast) allow-discrete;
+}
+.dialog[open]::backdrop, .drawer[open]::backdrop { opacity: 1; transition-duration: var(--dur-base); }
+@starting-style {
+  .menu:popover-open { opacity: 0; transform: scale(0.95); }
+  .toast:popover-open { opacity: 0; transform: translateY(var(--space-3)); }
+  .dialog[open] { opacity: 0; transform: scale(0.96); }
+  .drawer[open] { transform: translateX(100%); }
+  .dialog[open]::backdrop, .drawer[open]::backdrop { opacity: 0; }
+}
+
+/* <button class="icon-btn" aria-label="Copy" data-tip="Copy">. The first tip waits 400ms;
+   once one has shown, the next ones appear at once (--tip-warm turns 1 after 400ms of hovering and
+   falls back to 0 half a second after the pointer leaves the last tip). */
+@property --tip-warm { syntax: "<number>"; inherits: true; initial-value: 0; }
+@keyframes tip-warm { to { --tip-warm: 1; } }
+:root { transition: --tip-warm 0s 500ms; }
+:root:has([data-tip]:hover) { animation: tip-warm 0s 400ms forwards; }
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip); position: absolute; bottom: calc(100% + var(--space-1)); left: 50%; translate: -50% 0;
+  padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); background: var(--text); color: var(--bg);
+  font-size: var(--fs-xs); font-weight: 400; line-height: var(--lh-snug); white-space: nowrap; pointer-events: none;
+  opacity: 0; transform: scale(0.97); transform-origin: bottom center;
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+[data-tip]:hover::after, [data-tip]:focus-visible::after {
+  opacity: 1; transform: none;
+  transition-delay: calc((1 - var(--tip-warm)) * 400ms);
+  transition-duration: calc((1 - var(--tip-warm)) * var(--dur-fast));
+}
 
 /* ---------- navigation ---------- */
 .nav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-4); padding-block: var(--space-3); }
 .nav ul { display: flex; flex-wrap: wrap; gap: var(--space-4); padding: 0; list-style: none; }
-.nav a { display: inline-flex; align-items: center; min-height: var(--control-h); min-width: var(--control-h); color: var(--text); text-decoration: none; }
+.nav a { display: inline-flex; align-items: center; justify-content: center; min-height: var(--control-h); min-width: var(--control-h); color: var(--text); text-decoration: none; }
 .tabs { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--border); overflow-x: auto; }
 .tab { min-height: var(--control-h); min-width: var(--control-h); padding: 0 var(--space-3); border-bottom: 2px solid transparent; color: var(--text-muted); white-space: nowrap; }
 .tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
@@ -127,16 +225,32 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width
 /* ---------- states ---------- */
 .skeleton { display: block; min-height: 1em; border-radius: var(--radius-sm); background: var(--surface-2); }
 .empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-7) var(--space-4); text-align: center; color: var(--text-muted); }
-.spinner { width: 1em; height: 1em; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 800ms linear infinite; }
+.spinner { width: 1em; height: 1em; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 600ms linear infinite; }
 @keyframes spin { to { transform: rotate(1turn); } }
+
+/* View states: <section data-states="filled loading empty error" data-state="filled">, each child marked
+   data-when="loading" etc. Only the children for the current data-state show; the gate flips through them. */
+[data-state="filled"] > [data-when]:not([data-when~="filled"]),
+[data-state="loading"] > [data-when]:not([data-when~="loading"]),
+[data-state="empty"] > [data-when]:not([data-when~="empty"]),
+[data-state="error"] > [data-when]:not([data-when~="error"]),
+[data-state="denied"] > [data-when]:not([data-when~="denied"]),
+[data-state="offline"] > [data-when]:not([data-when~="offline"]),
+[data-state="partial"] > [data-when]:not([data-when~="partial"]) { display: none !important; }
+
+/* Things seen 100+ times a day (command palette, keyboard-driven lists) never animate. */
+[data-freq="constant"], [data-freq="constant"] *, [data-freq="constant"] *::before, [data-freq="constant"] *::after { transition: none !important; animation: none !important; }
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
+/* Reduced motion: keep the fades, drop movement, scale and blur. Things still ease in, they just don't travel. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *, *::before, *::after, ::backdrop {
+    transition-property: opacity, color, background-color, border-color, outline-color, box-shadow, display, overlay, --tip-warm !important;
+    scroll-behavior: auto !important;
+  }
+  *:not(.spinner), *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
   }
 }

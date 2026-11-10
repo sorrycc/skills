@@ -30,7 +30,7 @@ npx skills add sorrycc/skills
 | Skill | Description |
 |-------|-------------|
 | [create-skill](skills/create-skill/SKILL.md) | Scaffold a new skill — creates the directory and a well-formed SKILL.md. |
-| [frontend-rails](skills/frontend-rails/SKILL.md) | Build good-looking frontend pages from a ready-made theme, then check them with a browser gate script. [Demo](https://sorrycc.github.io/frontend-rails/examples/) |
+| [frontend-rails](skills/frontend-rails/SKILL.md) | Build frontend pages from a ready-made theme, then let a browser gate script look at them and use them (hover, press, Tab, view states, long content, copy). Also audits existing pages. [Demo](https://sorrycc.github.io/frontend-rails/examples/) |
 
 ## License
 

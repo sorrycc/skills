@@ -24,3 +24,6 @@ Choose the one that fits the product. Don't use all of them.
 - Vary the layout between sections: a split, then a full-width image, then a list. Not the same card grid over and over.
 - Specific beats generic: "ships Wednesday" beats "fast delivery".
 - Use real images or a plain `--surface-2` box labeled with what will go there. No fake stock-art shapes.
+- Not every heading needs a subtitle. See `copy.md`.
+- People came to use the site, not to watch it. No sections fading in on scroll, no scroll hijacking, no custom cursor, no carousel. The gate fails the first three.
+- Anything that navigates is a real link with an `href`, so it opens in a new tab.

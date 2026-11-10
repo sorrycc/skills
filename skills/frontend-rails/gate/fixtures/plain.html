@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plain page — not built on tokens.css, for --audit</title>
+  <style>
+    :root { --spacing: 4px; }
+    body { margin: 0; padding: 24px; font-family: system-ui, sans-serif; color: #111; background: #fff; }
+    .a { border: 1px solid #ccc; border-radius: 3px; padding: 12px; }
+    .b { border: 1px solid #ccc; border-radius: 5px; padding: 13px; }       /* R12: off the page's own 4px grid */
+    .c { border: 1px solid #ccc; border-radius: 8px; padding: 16px; }
+    .d { border: 1px solid #ccc; border-radius: 11px; padding: 16px; }
+    .e { border: 1px solid #ccc; border-radius: 14px; padding: 16px; }      /* A01: five corner radii */
+  </style>
+</head>
+<body>
+  <h1>Invoices</h1>
+  <div class="a">March</div>
+  <div class="b">April</div>
+  <div class="c">May</div>
+  <div class="d">June</div>
+  <div class="e">July</div>
+</body>
+</html>

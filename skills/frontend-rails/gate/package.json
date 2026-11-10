@@ -2,6 +2,9 @@
   "name": "frontend-rails-gate",
   "private": true,
   "type": "module",
+  "scripts": {
+    "test": "node test.mjs"
+  },
   "dependencies": {
     "playwright": "^1.65.0"
   }
